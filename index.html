@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>プロジェクト管理</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f0f2f5;
+  --white: #ffffff;
+  --primary: #1a3c5e;
+  --accent: #2980b9;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #94a3b8;
+  --done-bg: #dcfce7; --done-txt: #166534;
+  --check-bg: #fef9c3; --check-txt: #854d0e;
+  --edit-bg: #ffedd5;  --edit-txt: #9a3412;
+  --todo-bg: #fee2e2;  --todo-txt: #991b1b;
+  --nav-h: 60px;
+  --topbar-h: 56px;
+  --sidebar-w: 240px;
+}
+
+body {
+  font-family: -apple-system, 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 14px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden { display: none !important; }
+
+/* ── SIDEBAR (desktop) ── */
+#sidebar {
+  position: fixed; top: 0; left: 0; width: var(--sidebar-w);
+  height: 100vh; background: var(--primary); color: #fff;
+  display: flex; flex-direction: column; z-index: 200;
+  overflow-y: auto;
+}
+#sidebar .logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.1); }
+#sidebar .logo h1 { font-size: 15px; font-weight: 700; }
+#sidebar .logo p  { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 3px; }
+#sidebar nav { padding: 10px 0; flex: 1; }
+#sidebar .sec { font-size: 10px; letter-spacing: .08em; color: rgba(255,255,255,.35);
+  padding: 14px 18px 4px; text-transform: uppercase; }
+#sidebar nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 18px; color: rgba(255,255,255,.72); font-size: 13px;
+  cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+  transition: background .15s; border-radius: 0;
+}
+#sidebar nav a:hover, #sidebar nav a.active { background: rgba(255,255,255,.12); color: #fff; }
+#sidebar nav a .ic { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+
+/* ── MAIN ── */
+#main { margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── TOPBAR ── */
+#topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--white); border-bottom: 1px solid var(--border);
+  height: var(--topbar-h); display: flex; align-items: center;
+  justify-content: space-between; padding: 0 20px; gap: 12px;
+}
+#topbar h2 { font-size: 17px; font-weight: 700; }
+#menu-btn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; padding: 4px; }
+
+/* ── BOTTOM NAV (mobile) ── */
+#bottom-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--nav-h); background: var(--white);
+  border-top: 1px solid var(--border); z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#bottom-nav .tabs { display: flex; height: 100%; }
+#bottom-nav .tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; cursor: pointer; border: none;
+  background: none; color: var(--muted); font-size: 10px; font-family: inherit;
+  transition: color .15s;
+}
+#bottom-nav .tab .ic { font-size: 20px; }
+#bottom-nav .tab.active { color: var(--accent); }
+
+/* ── CONTENT ── */
+#content { padding: 16px 20px; flex: 1; padding-bottom: 20px; }
+
+/* ── STATS ── */
+.stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--white); border-radius: 12px; padding: 12px 14px;
+  border: 1px solid var(--border);
+}
+.stat-card .lbl { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.stat-card .val { font-size: 20px; font-weight: 700; }
+.stat-card.green .val { color: var(--done-txt); }
+.stat-card.orange .val { color: var(--edit-txt); }
+.stat-card.blue .val { color: var(--accent); font-size: 16px; }
+
+/* ── FILTERS ── */
+.filters {
+  display: flex; gap: 8px; margin-bottom: 12px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px; scrollbar-width: none;
+}
+.filters::-webkit-scrollbar { display: none; }
+.filters input, .filters select {
+  flex-shrink: 0; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13px; font-family: inherit;
+  background: var(--white); color: var(--text); min-width: 0;
+  -webkit-appearance: none; appearance: none;
+}
+.filters input { min-width: 160px; }
+.filters select { min-width: 120px; }
+
+/* ── TABLE WRAP ── */
+.table-wrap {
+  background: var(--white); border-radius: 14px;
+  border: 1px solid var(--border); overflow: hidden;
+}
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+thead tr { background: #f8fafc; }
+th {
+  padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
+  border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
+}
+th:hover { color: var(--accent); }
+td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f8fafc; }
+
+/* ── TASK CARDS (mobile) ── */
+.task-card {
+  background: var(--white); border-radius: 14px; border: 1px solid var(--border);
+  margin-bottom: 10px; overflow: hidden;
+}
+.task-card .card-top {
+  padding: 13px 14px 10px; display: flex; justify-content: space-between;
+  align-items: flex-start; gap: 10px;
+}
+.task-card .card-name { font-weight: 600; font-size: 14px; line-height: 1.4; flex: 1; }
+.task-card .card-meta {
+  padding: 0 14px 12px; display: flex; flex-wrap: wrap; gap: 6px;
+  align-items: center;
+}
+.task-card .card-price { font-weight: 700; font-size: 14px; margin-left: auto; }
+.task-card .card-actions {
+  padding: 0 10px 10px; display: flex; gap: 6px; justify-content: flex-end;
+}
+
+/* ── BADGES & CHIPS ── */
+.badge {
+  display: inline-flex; align-items: center; padding: 3px 9px;
+  border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.badge-done  { background: var(--done-bg);  color: var(--done-txt); }
+.badge-check { background: var(--check-bg); color: var(--check-txt); }
+.badge-edit  { background: var(--edit-bg);  color: var(--edit-txt); }
+.badge-todo  { background: var(--todo-bg);  color: var(--todo-txt); }
+
+.chip {
+  display: inline-block; padding: 3px 9px; border-radius: 20px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.chip-harebutai { background: #ede9fe; color: #5b21b6; }
+.chip-kuukan    { background: #d1fae5; color: #065f46; }
+.chip-telestar  { background: #fce7f3; color: #9d174d; }
+.chip-rotos     { background: #fef3c7; color: #92400e; }
+.chip-kita      { background: #ffedd5; color: #9a3412; }
+.chip-naka      { background: #dbeafe; color: #1e40af; }
+.chip-hibiki    { background: #ecfdf5; color: #065f46; border: 1px solid #6ee7b7; }
+.chip-iol       { background: #e0f2fe; color: #075985; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--white); color: var(--text); font-size: 13px;
+  cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:hover { background: #f8fafc; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: #2471a3; }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+.btn-danger { background: #ef4444; color: #fff; border-color: #ef4444; }
+.btn-danger:hover { background: #dc2626; }
+.btn-icon { padding: 6px 10px; }
+
+/* ── FAB ── */
+#fab {
+  display: none; position: fixed; bottom: calc(var(--nav-h) + 16px);
+  right: 16px; width: 52px; height: 52px; border-radius: 26px;
+  background: var(--accent); color: #fff; border: none; font-size: 24px;
+  cursor: pointer; z-index: 150; box-shadow: 0 4px 16px rgba(41,128,185,.45);
+  -webkit-tap-highlight-color: transparent;
+  display: none; align-items: center; justify-content: center;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.modal {
+  background: var(--white); border-radius: 16px; width: 100%; max-width: 520px;
+  max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,.2);
+}
+.modal-header {
+  position: sticky; top: 0; background: var(--white);
+  padding: 18px 20px 0; display: flex; justify-content: space-between;
+  align-items: center; z-index: 1;
+}
+.modal-header h3 { font-size: 17px; font-weight: 700; }
+.modal-close {
+  background: #f1f5f9; border: none; width: 30px; height: 30px;
+  border-radius: 15px; font-size: 16px; cursor: pointer; color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-body { padding: 16px 20px; display: grid; gap: 12px; }
+.modal-footer { padding: 0 20px 20px; display: flex; justify-content: flex-end; gap: 8px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.form-group input, .form-group select, .form-group textarea {
+  padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: 15px; font-family: inherit; color: var(--text);
+  -webkit-appearance: none; appearance: none; background: var(--white);
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(41,128,185,.12);
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ── SUMMARY CARDS ── */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap: 12px; }
+.client-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.client-card .ch { padding: 14px 16px; background: var(--primary); color: #fff; }
+.client-card .ch h3 { font-size: 14px; font-weight: 700; }
+.client-card .ch .cnt { font-size: 11px; opacity: .65; margin-top: 2px; }
+.client-card .cb { padding: 12px 16px; }
+.client-card .pr { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f1f5f9; }
+.client-card .pr:last-child { border-bottom: none; }
+.client-card .tot { margin-top: 10px; padding: 8px 0 0; border-top: 2px solid var(--border); display: flex; justify-content: space-between; font-weight: 700; }
+
+/* ── EMPTY ── */
+.empty { text-align: center; padding: 60px 24px; color: var(--muted); }
+.empty .eic { font-size: 44px; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%;
+  transform: translateX(-50%); background: #1e293b; color: #fff;
+  padding: 10px 20px; border-radius: 24px; font-size: 13px; font-weight: 500;
+  z-index: 999; opacity: 0; transition: opacity .3s; pointer-events: none;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+
+/* ── DRAWER OVERLAY (mobile sidebar) ── */
+#drawer-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.4); z-index: 190;
+}
+#drawer-overlay.open { display: block; }
+
+/* ── MOBILE SIDEBAR (drawer) ── */
+#sidebar.drawer-open { transform: translateX(0) !important; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  #sidebar {
+    width: 280px; transform: translateX(-100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    top: 0; height: 100%;
+  }
+  #main { margin-left: 0; padding-bottom: var(--nav-h); }
+  #topbar { padding: 0 14px; }
+  #topbar h2 { font-size: 16px; }
+  #menu-btn { display: flex; }
+  #bottom-nav { display: block; }
+  #fab { display: flex; }
+  #topbar .add-btn { display: none; }
+  #content { padding: 12px 14px; padding-bottom: 8px; }
+  .stats { grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 12px; }
+  .stat-card { padding: 10px 12px; }
+  .stat-card .val { font-size: 18px; }
+  #task-table-wrap { display: none; }
+  #task-cards { display: block; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal { border-radius: 20px 20px 0 0; max-height: 92vh; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .summary-grid { grid-template-columns: 1fr; }
+  .filters input { min-width: 140px; }
+  .filters select { min-width: 110px; }
+}
+
+@media (min-width: 769px) {
+  #task-cards { display: none; }
+  #task-table-wrap { display: block; }
+  #fab { display: none !important; }
+  #bottom-nav { display: none !important; }
+  #topbar .add-btn { display: inline-flex; }
+}
+
+.sort-ic { font-size: 10px; }
+.outsource-tag { font-size: 12px; color: var(--muted); }
+.deadline-tag { font-size: 12px; color: var(--muted); }
+
+/* ── MONTH TABS ── */
+.month-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.month-tab {
+  padding: 7px 22px; border-radius: 20px; border: 2px solid var(--border);
+  background: var(--white); color: var(--muted); font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.month-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.month-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+/* ── LOGIN ── */
+#login-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.login-box {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 20px; padding: 40px 32px; max-width: 360px; width: 100%;
+  text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,.08);
+}
+.login-box h1 { font-size: 20px; margin-bottom: 8px; }
+.login-box p { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.login-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 24px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--white); font-size: 15px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .15s; width: 100%;
+  justify-content: center; -webkit-tap-highlight-color: transparent;
+}
+.login-btn:hover { background: #f8fafc; border-color: var(--accent); }
+#sync-status { font-size: 11px; color: var(--muted); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h1>📹 プロジェクト管理</h1>
+    <p>Googleアカウントでログインすると、<br>どの端末からでも同じデータが見られます</p>
+    <button class="login-btn" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Googleでログイン
+    </button>
+  </div>
+</div>
+
+<!-- Drawer overlay (mobile) -->
+<div id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="logo">
+    <h1>📹 プロジェクト管理</h1>
+    <p>動画制作事業</p>
+  </div>
+  <nav>
+    <div class="sec">メニュー</div>
+    <a class="active" data-view="tasks"    onclick="switchView('tasks');closeDrawer()"><span class="ic">📋</span>タスク一覧</a>
+    <a data-view="summary"  onclick="switchView('summary');closeDrawer()"><span class="ic">📊</span>取引先サマリー</a>
+    <a data-view="revenue"  onclick="switchView('revenue');closeDrawer()"><span class="ic">💰</span>月次収入</a>
+    <a data-view="outsource" onclick="switchView('outsource');closeDrawer()"><span class="ic">👥</span>外注費集計</a>
+    <div class="sec">データ管理</div>
+    <a onclick="exportData();closeDrawer()"><span class="ic">💾</span>バックアップ保存</a>
+    <a onclick="document.getElementById('import-input').click();closeDrawer()"><span class="ic">📂</span>バックアップ読込</a>
+    <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
+    <div class="sec">アカウント</div>
+    <a onclick="signOutGoogle()"><span class="ic">🚪</span><span id="logout-label">ログアウト</span></a>
+    <div class="sec">取引先</div>
+    <a onclick="filterByClient('HAREBUTAI');closeDrawer()"><span class="ic">🏀</span>HAREBUTAI</a>
+    <a onclick="filterByClient('クウカン不動産');closeDrawer()"><span class="ic">🏠</span>クウカン不動産</a>
+    <a onclick="filterByClient('テレスターさん');closeDrawer()"><span class="ic">🍰</span>テレスターさん</a>
+    <a onclick="filterByClient('ロトスショート動画');closeDrawer()"><span class="ic">🍽️</span>ロトスショート動画</a>
+    <a onclick="filterByClient('きたごはん');closeDrawer()"><span class="ic">🍜</span>きたごはん</a>
+    <a onclick="filterByClient('なかしーさん・とけるさん');closeDrawer()"><span class="ic">🎬</span>なかしー・とける</a>
+    <a onclick="filterByClient('響様動画編集');closeDrawer()"><span class="ic">🦷</span>響様動画編集</a>
+    <a onclick="filterByClient('イオル賃貸');closeDrawer()"><span class="ic">🏢</span>イオル賃貸</a>
+  </nav>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <button id="menu-btn" onclick="openDrawer()">☰</button>
+    <h2 id="page-title">タスク一覧</h2>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="sync-status"></span>
+      <button class="btn add-btn" onclick="exportData()" title="バックアップ保存" style="padding:8px 12px">💾</button>
+      <button class="btn btn-primary add-btn" onclick="openAddModal()">＋ タスク追加</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <!-- Tasks View -->
+    <div id="view-tasks">
+      <div id="task-month-tabs" class="month-tabs"></div>
+      <div class="stats" id="stats-bar"></div>
+      <div class="filters">
+        <input type="text" id="search" placeholder="🔍 検索..." oninput="renderTasks()">
+        <select id="filter-client" onchange="renderTasks()">
+          <option value="">全取引先</option>
+        </select>
+        <select id="filter-progress" onchange="renderTasks()">
+          <option value="">全進捗</option>
+          <option value="1_納品済み">✅ 納品済み</option>
+          <option value="2_確認中">🔄 確認中</option>
+          <option value="4_編集中">✏️ 編集中</option>
+          <option value="5_未着手">⏸ 未着手</option>
+        </select>
+        <select id="filter-zone" onchange="renderTasks()">
+          <option value="">全ゾーン</option>
+          <option value="formal">正式タスク</option>
+          <option value="upper">企画メモ</option>
+        </select>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="table-wrap" id="task-table-wrap">
+        <div class="scroll-x">
+          <table>
+            <thead><tr>
+              <th onclick="toggleSort('name')">タスク名 <span class="sort-ic" id="sort-name"></span></th>
+              <th onclick="toggleSort('client')">取引先 <span class="sort-ic" id="sort-client"></span></th>
+              <th onclick="toggleSort('outsource')">外注先 <span class="sort-ic" id="sort-outsource"></span></th>
+              <th onclick="toggleSort('deadline')">納期 <span class="sort-ic" id="sort-deadline"></span></th>
+              <th onclick="toggleSort('progress')">進捗 <span class="sort-ic" id="sort-progress"></span></th>
+              <th onclick="toggleSort('price')" style="text-align:right">単価 <span class="sort-ic" id="sort-price"></span></th>
+              <th>備考</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="task-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="task-cards"></div>
+    </div>
+
+    <!-- Summary View -->
+    <div id="view-summary" class="hidden">
+      <div id="summary-month-tabs" class="month-tabs"></div>
+      <div class="summary-grid" id="summary-grid"></div>
+    </div>
+
+    <!-- Revenue View -->
+    <div id="view-revenue" class="hidden">
+      <div id="revenue-month-tabs" class="month-tabs"></div>
+      <div id="revenue-warning"></div>
+      <div class="table-wrap"><div class="scroll-x">
+        <table id="revenue-table"></table>
+      </div></div>
+    </div>
+
+    <!-- Outsource View -->
+    <div id="view-outsource" class="hidden">
+      <div id="outsource-month-tabs" class="month-tabs"></div>
+      <div class="table-wrap"><div class="scroll-x">
+        <table id="outsource-table"></table>
+      </div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FAB (mobile) -->
+<button id="fab" onclick="openAddModal()">＋</button>
+
+<!-- Bottom nav (mobile) -->
+<nav id="bottom-nav">
+  <div class="tabs">
+    <button class="tab active" data-view="tasks" onclick="switchView('tasks')">
+      <span class="ic">📋</span><span>タスク</span>
+    </button>
+    <button class="tab" data-view="summary" onclick="switchView('summary')">
+      <span class="ic">📊</span><span>サマリー</span>
+    </button>
+    <button class="tab" data-view="revenue" onclick="switchView('revenue')">
+      <span class="ic">💰</span><span>収入</span>
+    </button>
+    <button class="tab" data-view="outsource" onclick="switchView('outsource')">
+      <span class="ic">👥</span><span>外注費</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="closeModalOnBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">タスク追加</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>タスク名 *</label>
+        <input type="text" id="f-name" placeholder="タスク名を入力">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>取引先</label>
+          <select id="f-client">
+            <option value="">選択</option>
+            <option>HAREBUTAI</option>
+            <option>クウカン不動産</option>
+            <option>テレスターさん</option>
+            <option>ロトスショート動画</option>
+            <option>きたごはん</option>
+            <option>なかしーさん・とけるさん</option>
+            <option>響様動画編集</option>
+            <option>イオル賃貸</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>外注先</label>
+          <select id="f-outsource">
+            <option value="">選択</option>
+            <option>山中</option>
+            <option>あっくん</option>
+            <option>ともよさん</option>
+            <option>そうちゃん</option>
+            <option>タカト</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>進捗</label>
+          <select id="f-progress">
+            <option value="">未設定</option>
+            <option value="5_未着手">⏸ 未着手</option>
+            <option value="4_編集中">✏️ 編集中</option>
+            <option value="2_確認中">🔄 確認中</option>
+            <option value="1_納品済み">✅ 納品済み</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>単価（¥）</label>
+          <input type="number" id="f-price" placeholder="0" inputmode="numeric">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>納期</label>
+          <input type="date" id="f-deadline" oninput="onDeadlineChange()">
+        </div>
+        <div class="form-group">
+          <label>納品月</label>
+          <input type="month" id="f-delivery-month">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ゾーン</label>
+          <select id="f-zone">
+            <option value="formal">正式タスク</option>
+            <option value="upper">企画メモ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>備考</label>
+          <input type="text" id="f-memo" placeholder="メモ">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveTask()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+// ===================== DATA =====================
+const CLIENTS = ['HAREBUTAI','クウカン不動産','テレスターさん','ロトスショート動画','きたごはん','なかしーさん・とけるさん','響様動画編集','イオル賃貸'];
+const OUTSOURCERS = ['山中','あっくん','ともよさん','そうちゃん','タカト'];
+const OUTSOURCE_RATE = 2500;
+const DATA_VERSION = '4';
+
+const DEFAULT_TASKS = [
+  {id:1,  name:'ロトスショートNo12 【野菜あるある】たまにはゴミ箱を確認すべき理由がこちら(キウイ)', client:'ロトスショート動画', outsource:'そうちゃん', deadline:'2026-03-25', deliveryMonth:'2026-04', progress:'1_納品済み', price:4000,  memo:'', zone:'formal'},
+  {id:2,  name:'ロトス広告動画',              client:'ロトスショート動画',       outsource:'山中',       deadline:'2026-03-28', deliveryMonth:'2026-04', progress:'1_納品済み', price:5000,  memo:'', zone:'formal'},
+  {id:3,  name:'焼肉たんか',                  client:'きたごはん',              outsource:'山中',       deadline:'2026-03-31', deliveryMonth:'2026-04', progress:'1_納品済み', price:7000,  memo:'', zone:'formal'},
+  {id:4,  name:'クウカン不動産撮影',           client:'クウカン不動産',          outsource:'',           deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:5000,  memo:'', zone:'formal'},
+  {id:5,  name:'しっかりめのビフォーアフター動画', client:'クウカン不動産',       outsource:'山中',       deadline:'2026-04-04', deliveryMonth:'2026-04', progress:'1_納品済み', price:5000,  memo:'', zone:'formal'},
+  {id:6,  name:'上富良野ビフォアフ動画4',      client:'クウカン不動産',          outsource:'山中',       deadline:'2026-04-08', deliveryMonth:'2026-04', progress:'1_納品済み', price:2500,  memo:'', zone:'formal'},
+  {id:7,  name:'上富良野ビフォアフ動画2',      client:'クウカン不動産',          outsource:'山中',       deadline:'2026-04-09', deliveryMonth:'2026-04', progress:'1_納品済み', price:2500,  memo:'', zone:'formal'},
+  {id:8,  name:'No13 紅生姜',                 client:'ロトスショート動画',       outsource:'ともよさん', deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:4000,  memo:'', zone:'formal'},
+  {id:9,  name:'No15 パン',                   client:'ロトスショート動画',       outsource:'ともよさん', deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:4000,  memo:'', zone:'formal'},
+  {id:10, name:'No16 コロッケ',               client:'ロトスショート動画',       outsource:'あっくん',   deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:4000,  memo:'', zone:'formal'},
+  {id:11, name:'クウカン内見動画4',            client:'クウカン不動産',          outsource:'あっくん',   deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:5000,  memo:'', zone:'formal'},
+  {id:12, name:'レバンガベンチリアクション',   client:'HAREBUTAI',              outsource:'山中',       deadline:'2026-04-07', deliveryMonth:'2026-04', progress:'2_確認中',   price:'',    memo:'', zone:'formal'},
+  {id:13, name:'スイーツVLOG動画',            client:'テレスターさん',          outsource:'ともよさん', deadline:'2026-04-07', deliveryMonth:'2026-04', progress:'2_確認中',   price:7000,  memo:'', zone:'formal'},
+  {id:14, name:'上富良野ビフォアフ動画3',      client:'クウカン不動産',          outsource:'山中',       deadline:'2026-04-10', deliveryMonth:'2026-04', progress:'1_納品済み', price:2500,  memo:'', zone:'formal'},
+  {id:15, name:'No14 セミナー',               client:'ロトスショート動画',       outsource:'あっくん',   deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:4000,  memo:'', zone:'formal'},
+  {id:16, name:'上富良野ビフォアフ動画5',      client:'クウカン不動産',          outsource:'山中',       deadline:'2026-04-12', deliveryMonth:'2026-04', progress:'5_未着手',   price:2500,  memo:'', zone:'formal'},
+  {id:17, name:'上富良野ビフォアフ動画4 (4/11)',client:'クウカン不動産',         outsource:'山中',       deadline:'2026-04-11', deliveryMonth:'2026-04', progress:'5_未着手',   price:2500,  memo:'', zone:'formal'},
+  {id:18, name:'No17 ムース色',               client:'ロトスショート動画',       outsource:'ともよさん', deadline:'',           deliveryMonth:'2026-04', progress:'5_未着手',   price:4000,  memo:'', zone:'formal'},
+  {id:19, name:'No18 バナナ',                 client:'ロトスショート動画',       outsource:'そうちゃん', deadline:'',           deliveryMonth:'2026-04', progress:'5_未着手',   price:4000,  memo:'', zone:'formal'},
+  {id:20, name:'No19 にんじん',               client:'ロトスショート動画',       outsource:'そうちゃん', deadline:'',           deliveryMonth:'2026-04', progress:'5_未着手',   price:4000,  memo:'', zone:'formal'},
+  {id:21, name:'クウカン内見動画2',            client:'クウカン不動産',          outsource:'あっくん',   deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:5000,  memo:'', zone:'formal'},
+  {id:22, name:'クウカン内見動画3',            client:'クウカン不動産',          outsource:'あっくん',   deadline:'',           deliveryMonth:'2026-04', progress:'4_編集中',   price:5000,  memo:'', zone:'formal'},
+  {id:23, name:'クウカン内見動画4 (別)',        client:'クウカン不動産',          outsource:'あっくん',   deadline:'',           deliveryMonth:'2026-04', progress:'4_編集中',   price:5000,  memo:'', zone:'formal'},
+  {id:24, name:'クウカン内見動画5',            client:'クウカン不動産',          outsource:'ともよさん', deadline:'',           deliveryMonth:'2026-04', progress:'4_編集中',   price:5000,  memo:'', zone:'formal'},
+  {id:25, name:'マックスヒサタケおってみた',   client:'HAREBUTAI',              outsource:'山中',       deadline:'',           deliveryMonth:'2026-04', progress:'2_確認中',   price:'',    memo:'', zone:'formal'},
+  {id:26, name:'フリースロールーティンどれが好き？', client:'HAREBUTAI',        outsource:'山中',       deadline:'',           deliveryMonth:'2026-04', progress:'5_未着手',   price:'',    memo:'', zone:'formal'},
+  {id:27, name:'どのレイアップが好き？',       client:'HAREBUTAI',              outsource:'山中',       deadline:'',           deliveryMonth:'2026-04', progress:'5_未着手',   price:'',    memo:'', zone:'formal'},
+  {id:28, name:'どのシュートが好き？',         client:'HAREBUTAI',              outsource:'山中',       deadline:'',           deliveryMonth:'2026-04', progress:'5_未着手',   price:'',    memo:'', zone:'formal'},
+  {id:29, name:'とけるディレクション',         client:'なかしーさん・とけるさん', outsource:'',          deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:15000, memo:'', zone:'formal'},
+  {id:30, name:'とける撮影0417',              client:'なかしーさん・とけるさん', outsource:'',          deadline:'',           deliveryMonth:'2026-04', progress:'1_納品済み', price:15000, memo:'', zone:'formal'},
+];
+
+function loadTasks() {
+  const saved = localStorage.getItem('pm_tasks');
+  const ver   = localStorage.getItem('pm_version');
+  if (!saved || ver !== DATA_VERSION) return DEFAULT_TASKS;
+  return JSON.parse(saved).map(t => ({
+    ...t, deliveryMonth: t.deliveryMonth || (t.deadline ? t.deadline.slice(0,7) : ''),
+  }));
+}
+function saveTasks(t) {
+  localStorage.setItem('pm_tasks', JSON.stringify(t));
+  localStorage.setItem('pm_version', DATA_VERSION);
+  saveToCloud(t);
+}
+
+let tasks = loadTasks();
+let nextId = Math.max(...tasks.map(t => t.id)) + 1;
+let currentView = 'tasks';
+let editingId = null;
+let sortKey = 'deadline', sortDir = 1;
+
+// ── 月ヘルパー ──
+function getMonthYM(offset = 0) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + offset);
+  return d.toISOString().slice(0, 7); // 例: '2026-05'
+}
+function monthLabel(ym) {
+  return parseInt(ym.split('-')[1]) + '月'; // '2026-04' → '4月'
+}
+function getAvailableMonths() {
+  const ft = tasks.filter(t => t.zone === 'formal');
+  const cur = getMonthYM(0);
+  return [...new Set([...ft.map(t => t.deliveryMonth || '').filter(Boolean), cur])].sort();
+}
+function renderMonthTabsHTML(viewKey, selectedM) {
+  return getAvailableMonths().map(m =>
+    `<button class="month-tab${m === selectedM ? ' active' : ''}" onclick="selectViewMonth('${viewKey}','${m}')">${monthLabel(m)}</button>`
+  ).join('');
+}
+function selectViewMonth(view, m) {
+  if (view === 'tasks')     { taskMonth = m;     renderTasks(); }
+  if (view === 'summary')   { summaryMonth = m;   renderSummary(); }
+  if (view === 'revenue')   { revenueMonth = m;   renderRevenue(); }
+  if (view === 'outsource') { outsourceMonth = m; renderOutsource(); }
+}
+
+// 各ビューの選択月（デフォルト=今月）
+let taskMonth     = getMonthYM(0);
+let summaryMonth  = getMonthYM(0);
+let revenueMonth  = getMonthYM(0);
+let outsourceMonth= getMonthYM(0);
+
+// 月のタスク取得ロジック
+function getTasksForMonth(allTasks, month) {
+  const curMonth = getMonthYM(0);
+  if (month === curMonth) {
+    // 今月：今月のタスク + 未納品のみ繰り越し
+    return allTasks.filter(t => {
+      if (t.deliveryMonth === month) return true;  // 今月のタスクは全件
+      if (t.deliveryMonth > month) return false;   // 未来月は除外
+      // 過去月 or 納品月未設定 → 未納品のみ繰り越し
+      return t.progress !== '1_納品済み';
+    });
+  } else {
+    // 過去月：その月のタスクのみ
+    return allTasks.filter(t => t.deliveryMonth === month);
+  }
+}
+
+// ===================== DRAWER =====================
+function openDrawer() {
+  document.getElementById('sidebar').classList.add('drawer-open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('sidebar').classList.remove('drawer-open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ===================== VIEWS =====================
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('[data-view]').forEach(el =>
+    el.classList.toggle('active', el.dataset.view === view));
+  document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('view-' + view).classList.remove('hidden');
+  const titles = {tasks:'タスク一覧', summary:'取引先サマリー', revenue:'月次収入', outsource:'外注費集計'};
+  document.getElementById('page-title').textContent = titles[view];
+  if (view === 'tasks') renderTasks();
+  if (view === 'summary') renderSummary();
+  if (view === 'revenue') renderRevenue();
+  if (view === 'outsource') renderOutsource();
+}
+
+function filterByClient(client) {
+  switchView('tasks');
+  document.getElementById('filter-client').value = client;
+  renderTasks();
+}
+
+// ===================== HELPERS =====================
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtPrice(p) { return (p === '' || p === null || p === undefined) ? '—' : '¥' + Number(p).toLocaleString(); }
+function fmtDate(d)  { return d ? d.replace(/-/g,'/') : '—'; }
+
+function clientChipClass(c) {
+  const m = {'HAREBUTAI':'harebutai','クウカン不動産':'kuukan','テレスターさん':'telestar',
+    'ロトスショート動画':'rotos','きたごはん':'kita','なかしーさん・とけるさん':'naka',
+    '響様動画編集':'hibiki','イオル賃貸':'iol'};
+  return m[c] ? 'chip chip-'+m[c] : 'chip';
+}
+
+function progressBadge(p) {
+  if (!p) return '<span style="color:var(--muted);font-size:12px">—</span>';
+  const cls = {'1_納品済み':'done','2_確認中':'check','4_編集中':'edit','5_未着手':'todo'};
+  const lbl = {'1_納品済み':'✅ 納品済み','2_確認中':'🔄 確認中','4_編集中':'✏️ 編集中','5_未着手':'⏸ 未着手'};
+  return `<span class="badge badge-${cls[p]||'todo'}">${lbl[p]||p}</span>`;
+}
+
+// ===================== TASKS =====================
+function getFiltered() {
+  const search   = document.getElementById('search').value.toLowerCase();
+  const client   = document.getElementById('filter-client').value;
+  const progress = document.getElementById('filter-progress').value;
+  const zone     = document.getElementById('filter-zone').value;
+  const base = getTasksForMonth(tasks, taskMonth);
+  let f = base.filter(t =>
+    (!search   || t.name.toLowerCase().includes(search)) &&
+    (!client   || t.client === client) &&
+    (!progress || t.progress === progress) &&
+    (!zone     || t.zone === zone)
+  );
+  const k = sortKey;
+  f.sort((a,b) => {
+    let va = a[k]??'', vb = b[k]??'';
+    if (typeof va === 'number') return (va-vb)*sortDir;
+    return String(va).localeCompare(String(vb),'ja')*sortDir;
+  });
+  return f;
+}
+
+function toggleSort(key) {
+  if (sortKey===key) sortDir*=-1; else { sortKey=key; sortDir=1; }
+  document.querySelectorAll('.sort-ic').forEach(el=>el.textContent='');
+  const el = document.getElementById('sort-'+key);
+  if (el) el.textContent = sortDir===1?' ▲':' ▼';
+  renderTasks();
+}
+
+function populateClientFilter() {
+  const sel = document.getElementById('filter-client'), cur = sel.value;
+  sel.innerHTML = '<option value="">全取引先</option>';
+  CLIENTS.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    if (c===cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function renderStats() {
+  const f    = tasks.filter(t => t.zone === 'formal');
+  const base = getTasksForMonth(f, taskMonth);
+  const done = base.filter(t => t.progress === '1_納品済み');
+  const inp  = base.filter(t => t.progress === '4_編集中');
+  const rev  = done.reduce((s,t) => s + (Number(t.price)||0), 0);
+  const ml   = monthLabel(taskMonth);
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-card"><div class="lbl">${ml}のタスク</div><div class="val">${base.length}</div></div>
+    <div class="stat-card green"><div class="lbl">納品済み</div><div class="val">${done.length}</div></div>
+    <div class="stat-card orange"><div class="lbl">編集中</div><div class="val">${inp.length}</div></div>
+    <div class="stat-card blue"><div class="lbl">${ml}納品済み売上</div><div class="val" style="font-size:15px">¥${rev.toLocaleString()}</div></div>`;
+}
+
+function renderTasks() {
+  document.getElementById('task-month-tabs').innerHTML = renderMonthTabsHTML('tasks', taskMonth);
+  populateClientFilter();
+  renderStats();
+  const items = getFiltered();
+
+  // Desktop table
+  const tbody = document.getElementById('task-tbody');
+  tbody.innerHTML = items.length === 0
+    ? `<tr><td colspan="8"><div class="empty"><div class="eic">📭</div><p>タスクが見つかりません</p></div></td></tr>`
+    : items.map(t => `
+    <tr>
+      <td style="font-weight:600;max-width:240px;white-space:normal">${esc(t.name)}</td>
+      <td>${t.client ? `<span class="${clientChipClass(t.client)}">${esc(t.client)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${esc(t.outsource)||'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${fmtDate(t.deadline)}</td>
+      <td>${progressBadge(t.progress)}</td>
+      <td style="text-align:right">${fmtPrice(t.price)}</td>
+      <td style="color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(t.memo)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" onclick="openEditModal(${t.id})">編集</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTask(${t.id})">削除</button>
+      </td>
+    </tr>`).join('');
+
+  // Mobile cards
+  const cards = document.getElementById('task-cards');
+  cards.innerHTML = items.length === 0
+    ? `<div class="empty"><div class="eic">📭</div><p>タスクが見つかりません</p></div>`
+    : items.map(t => `
+    <div class="task-card">
+      <div class="card-top">
+        <div class="card-name">${esc(t.name)}</div>
+        ${progressBadge(t.progress)}
+      </div>
+      <div class="card-meta">
+        ${t.client ? `<span class="${clientChipClass(t.client)}">${esc(t.client)}</span>` : ''}
+        ${t.outsource ? `<span class="outsource-tag">👤 ${esc(t.outsource)}</span>` : ''}
+        ${t.deadline  ? `<span class="deadline-tag">📅 ${fmtDate(t.deadline)}</span>` : ''}
+        <span class="card-price">${fmtPrice(t.price)}</span>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-sm" onclick="openEditModal(${t.id})">編集</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTask(${t.id})">削除</button>
+      </div>
+    </div>`).join('');
+}
+
+// ===================== SUMMARY =====================
+function renderSummary() {
+  document.getElementById('summary-month-tabs').innerHTML = renderMonthTabsHTML('summary', summaryMonth);
+  const lbl = {'1_納品済み':'✅ 納品済み','2_確認中':'🔄 確認中','4_編集中':'✏️ 編集中','5_未着手':'⏸ 未着手'};
+  const f   = tasks.filter(t => t.zone === 'formal');
+  document.getElementById('summary-grid').innerHTML = CLIENTS.map(client => {
+    const base = getTasksForMonth(f.filter(t => t.client === client), summaryMonth);
+    const bp = {'1_納品済み':[],'2_確認中':[],'4_編集中':[],'5_未着手':[]};
+    base.forEach(t => { if(bp[t.progress]) bp[t.progress].push(t); });
+    const doneRev = bp['1_納品済み'].reduce((s,t)=>s+(Number(t.price)||0),0);
+    return `<div class="client-card">
+      <div class="ch"><h3>${esc(client)}</h3><div class="cnt">${base.length}件のタスク</div></div>
+      <div class="cb">
+        ${Object.entries(bp).map(([k,v])=>`<div class="pr"><span>${lbl[k]}</span><span>${v.length}件 ¥${v.reduce((s,t)=>s+(Number(t.price)||0),0).toLocaleString()}</span></div>`).join('')}
+        <div class="tot"><span>納品済み売上</span><span>¥${doneRev.toLocaleString()}</span></div>
+      </div></div>`;
+  }).join('');
+}
+
+// ===================== REVENUE =====================
+function renderRevenue() {
+  document.getElementById('revenue-month-tabs').innerHTML = renderMonthTabsHTML('revenue', revenueMonth);
+  const ft = tasks.filter(t=>t.zone==='formal');
+  const months = [revenueMonth]; // 選択月のみ表示
+  const H = (bg,c='#fff')=>`background:${bg};color:${c};padding:10px 14px;font-weight:700`;
+  const yen = v => v===0?'<span style="color:var(--muted)">—</span>':`¥${v.toLocaleString()}`;
+  const fmtM = m=>m.replace(/(\d{4})-(\d{2})/,'$1年$2月');
+
+  const done  = (c,m) => ft.filter(t=>t.client===c&&t.progress==='1_納品済み'&&t.deliveryMonth===m).reduce((s,t)=>s+(Number(t.price)||0),0);
+  const doneT = (c)   => ft.filter(t=>t.client===c&&t.progress==='1_納品済み').reduce((s,t)=>s+(Number(t.price)||0),0);
+  const exp   = (c,m) => ft.filter(t=>t.client===c&&t.deliveryMonth===m).reduce((s,t)=>s+(Number(t.price)||0),0);
+  const expT  = (c)   => ft.filter(t=>t.client===c).reduce((s,t)=>s+(Number(t.price)||0),0);
+
+  const noMonth     = ft.filter(t=>t.progress==='1_納品済み'&&!t.deliveryMonth);
+  const noMonthRevC = c => noMonth.filter(t=>t.client===c).reduce((s,t)=>s+(Number(t.price)||0),0);
+  const noMonthRev  = noMonth.reduce((s,t)=>s+(Number(t.price)||0),0);
+
+  const warningBanner = noMonth.length > 0 ? `
+    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px">
+      ⚠️ <strong>納品月が未設定の納品済みタスクが ${noMonth.length} 件あります</strong>（合計 ¥${noMonthRev.toLocaleString()}）。
+      月次集計から漏れています。タスクを編集して「納品月」を設定してください。<br>
+      <span style="color:#856404">${noMonth.map(t=>`「${esc(t.name)}」`).join('、')}</span>
+    </div>` : '';
+
+  document.getElementById('revenue-warning').innerHTML = warningBanner;
+
+  document.getElementById('revenue-table').innerHTML = `
+  <thead>
+    <tr>
+      <th rowspan="2" style="${H('#1565c0')};vertical-align:middle;min-width:130px">取引先</th>
+      ${months.map(m=>`<th colspan="2" style="${H('#1565c0')};text-align:center;border-left:2px solid rgba(255,255,255,.2)">${fmtM(m)}</th>`).join('')}
+      <th colspan="2" style="${H('#0d47a1')};text-align:center;border-left:2px solid rgba(255,255,255,.2)">合計 ✅</th>
+    </tr>
+    <tr>
+      ${months.flatMap(m=>[
+        `<th style="${H('#1976d2')};text-align:right;font-size:11px;min-width:90px;border-left:2px solid rgba(255,255,255,.2)">納品済み</th>`,
+        `<th style="${H('#388e3c')};text-align:right;font-size:11px;min-width:90px">見込み</th>`
+      ]).join('')}
+      <th style="${H('#0d47a1')};text-align:right;font-size:11px;min-width:90px;border-left:2px solid rgba(255,255,255,.2)">納品済み</th>
+      <th style="${H('#1b5e20')};text-align:right;font-size:11px;min-width:90px">見込み</th>
+    </tr>
+  </thead>
+  <tbody>
+  ${CLIENTS.map(c=>{
+    const nm = noMonthRevC(c);
+    return `<tr>
+      <td style="font-weight:600">${esc(c)}${nm>0?`<br><span style="font-size:11px;color:#dc3545">⚠️ 月未設定 ¥${nm.toLocaleString()}</span>`:''}
+      </td>
+      ${months.flatMap(m=>[
+        `<td style="text-align:right;border-left:2px solid #e3f2fd">${yen(done(c,m))}</td>`,
+        `<td style="text-align:right;background:#f1f8e9">${yen(exp(c,m))}</td>`
+      ]).join('')}
+      <td style="text-align:right;font-weight:700;background:#e3f2fd;border-left:2px solid #bbdefb">${yen(doneT(c))}</td>
+      <td style="text-align:right;font-weight:700;background:#e8f5e9">${yen(expT(c))}</td>
+    </tr>`;
+  }).join('')}
+  <tr style="font-weight:700;border-top:2px solid #cbd5e1">
+    <td style="background:#e3f2fd">月計</td>
+    ${months.flatMap(m=>[
+      `<td style="text-align:right;background:#e3f2fd;border-left:2px solid #bbdefb">${yen(CLIENTS.reduce((s,c)=>s+done(c,m),0))}</td>`,
+      `<td style="text-align:right;background:#e8f5e9">${yen(CLIENTS.reduce((s,c)=>s+exp(c,m),0))}</td>`
+    ]).join('')}
+    <td style="text-align:right;background:#bbdefb;border-left:2px solid #90caf9">${yen(CLIENTS.reduce((s,c)=>s+doneT(c),0))}</td>
+    <td style="text-align:right;background:#c8e6c9">${yen(CLIENTS.reduce((s,c)=>s+expT(c),0))}</td>
+  </tr>
+  </tbody>`;
+}
+
+// ===================== OUTSOURCE =====================
+function renderOutsource() {
+  document.getElementById('outsource-month-tabs').innerHTML = renderMonthTabsHTML('outsource', outsourceMonth);
+  const ft    = tasks.filter(t => t.zone==='formal' && t.outsource && t.deliveryMonth===outsourceMonth);
+  const ftDone= ft.filter(t => t.progress==='1_納品済み');
+  const ml    = monthLabel(outsourceMonth);
+  const H = bg=>`background:${bg};color:#fff;padding:10px 14px;font-weight:700`;
+
+  document.getElementById('outsource-table').innerHTML = `
+  <thead>
+    <tr>
+      <th style="${H('#2e7d32')};min-width:100px">外注先</th>
+      <th style="${H('#388e3c')};text-align:right;min-width:80px">${ml} 本数</th>
+      <th style="${H('#388e3c')};text-align:right;min-width:110px">${ml} 外注費</th>
+    </tr>
+  </thead>
+  <tbody>
+  ${OUTSOURCERS.map(o=>{
+    const cnt  = ft.filter(t=>t.outsource===o).length;
+    const done = ftDone.filter(t=>t.outsource===o).length;
+    return `<tr>
+      <td style="font-weight:600">${esc(o)}<br><span style="font-size:11px;color:var(--muted);font-weight:400">納品済み ${done}本</span></td>
+      <td style="text-align:right">${cnt}本</td>
+      <td style="text-align:right">¥${(cnt*OUTSOURCE_RATE).toLocaleString()}</td>
+    </tr>`;
+  }).join('')}
+  <tr style="background:#e8f5e9;font-weight:700;border-top:2px solid #a5d6a7">
+    <td>合計</td>
+    <td style="text-align:right">${ft.length}本</td>
+    <td style="text-align:right">¥${(ft.length*OUTSOURCE_RATE).toLocaleString()}</td>
+  </tr></tbody>`;
+}
+
+// ===================== MODAL =====================
+function onDeadlineChange() {
+  const d = document.getElementById('f-deadline').value;
+  if (d) document.getElementById('f-delivery-month').value = d.slice(0,7);
+}
+
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'タスク追加';
+  ['f-name','f-deadline','f-price','f-memo'].forEach(id=>document.getElementById(id).value='');
+  ['f-client','f-outsource','f-progress'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-delivery-month').value = taskMonth; // 選択中の月をデフォルトに
+  document.getElementById('f-zone').value = 'formal';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('f-name').focus(), 100);
+}
+
+function openEditModal(id) {
+  const t = tasks.find(t=>t.id===id); if (!t) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'タスク編集';
+  document.getElementById('f-name').value           = t.name||'';
+  document.getElementById('f-client').value         = t.client||'';
+  document.getElementById('f-outsource').value      = t.outsource||'';
+  document.getElementById('f-deadline').value       = t.deadline||'';
+  document.getElementById('f-delivery-month').value = t.deliveryMonth||'';
+  document.getElementById('f-progress').value       = t.progress||'';
+  document.getElementById('f-price').value          = t.price||'';
+  document.getElementById('f-memo').value           = t.memo||'';
+  document.getElementById('f-zone').value           = t.zone||'formal';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  editingId = null;
+}
+function closeModalOnBg(e) { if (e.target===document.getElementById('modal-overlay')) closeModal(); }
+
+function saveTask() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('タスク名を入力してください'); return; }
+  const priceVal = document.getElementById('f-price').value;
+  const data = {
+    name,
+    client:        document.getElementById('f-client').value,
+    outsource:     document.getElementById('f-outsource').value,
+    deadline:      document.getElementById('f-deadline').value,
+    deliveryMonth: document.getElementById('f-delivery-month').value,
+    progress:      document.getElementById('f-progress').value,
+    price:         priceVal !== '' ? Number(priceVal) : '',
+    memo:          document.getElementById('f-memo').value.trim(),
+    zone:          document.getElementById('f-zone').value,
+  };
+  if (editingId !== null) {
+    const i = tasks.findIndex(t=>t.id===editingId);
+    if (i>=0) tasks[i] = {...tasks[i], ...data};
+    showToast('タスクを更新しました ✓');
+  } else {
+    tasks.push({id:nextId++, ...data});
+    showToast('タスクを追加しました ✓');
+  }
+  saveTasks(tasks); closeModal(); renderTasks();
+}
+
+function deleteTask(id) {
+  if (!confirm('このタスクを削除しますか？')) return;
+  tasks = tasks.filter(t=>t.id!==id);
+  saveTasks(tasks); renderTasks();
+  showToast('削除しました');
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+// ===================== BACKUP =====================
+function exportData() {
+  const now = new Date();
+  const ts = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) +
+             '_' + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
+  const payload = JSON.stringify({version: DATA_VERSION, tasks}, null, 2);
+  const blob = new Blob([payload], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pm_backup_' + ts + '.json';
+  a.click();
+  showToast('💾 バックアップを保存しました');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const obj = JSON.parse(ev.target.result);
+      const imported = Array.isArray(obj) ? obj : obj.tasks;
+      if (!Array.isArray(imported)) throw new Error('形式エラー');
+      if (!confirm(`${imported.length}件のタスクを読み込みます。現在のデータは上書きされます。よろしいですか？`)) return;
+      tasks = imported.map(t => ({
+        ...t, deliveryMonth: t.deliveryMonth || (t.deadline ? t.deadline.slice(0,7) : ''),
+      }));
+      nextId = Math.max(...tasks.map(t => t.id), 0) + 1;
+      saveTasks(tasks);
+      renderTasks();
+      showToast(`✅ ${tasks.length}件のタスクを読み込みました`);
+    } catch(err) {
+      alert('読み込みに失敗しました。正しいバックアップファイルか確認してください。');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+
+// ===================== CLOUD SYNC (Firebase) =====================
+const firebaseConfig = {
+  apiKey: "AIzaSyDSWKbwcWrDK8VEU96xh77x_nSB_w6ZDjs",
+  authDomain: "task-f8195.firebaseapp.com",
+  projectId: "task-f8195",
+  storageBucket: "task-f8195.firebasestorage.app",
+  messagingSenderId: "280923921357",
+  appId: "1:280923921357:web:3ed5ee68c2aa466bb34284",
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+let currentUser = null;
+let unsubscribeSync = null;
+
+function setSyncStatus(msg) {
+  const el = document.getElementById('sync-status');
+  if (el) el.textContent = msg;
+}
+
+function signInGoogle() {
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+    .catch(err => {
+      if (err.code === 'auth/operation-not-supported-in-this-environment' ||
+          err.code === 'auth/popup-blocked') {
+        auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+      } else {
+        alert('ログインに失敗しました: ' + err.message);
+      }
+    });
+}
+
+function signOutGoogle() {
+  if (!confirm('ログアウトしますか？')) return;
+  auth.signOut();
+}
+
+function userDoc() {
+  return db.collection('users').doc(currentUser.uid);
+}
+
+function saveToCloud(t) {
+  if (!currentUser) return;
+  userDoc().set({ version: DATA_VERSION, tasks: t, updatedAt: new Date().toISOString() })
+    .then(() => setSyncStatus('☁️ 同期済み'))
+    .catch(() => { setSyncStatus('⚠️ 未同期'); showToast('⚠️ クラウド保存に失敗しました'); });
+}
+
+function rerenderCurrentView() {
+  if (currentView === 'tasks')    renderTasks();
+  if (currentView === 'summary')  renderSummary();
+  if (currentView === 'revenue')  renderRevenue();
+  if (currentView === 'outsource') renderOutsource();
+}
+
+function startSync() {
+  setSyncStatus('☁️ 同期中…');
+  userDoc().get().then(snap => {
+    if (!snap.exists && tasks.length > 0) {
+      // 初回ログイン：この端末のデータをクラウドへ移行
+      return userDoc().set({ version: DATA_VERSION, tasks, updatedAt: new Date().toISOString() });
+    }
+  }).then(() => {
+    unsubscribeSync = userDoc().onSnapshot(snap => {
+      if (snap.metadata.hasPendingWrites) return; // 自分の書き込みはスキップ
+      if (snap.exists && Array.isArray(snap.data().tasks)) {
+        tasks  = snap.data().tasks;
+        nextId = Math.max(...tasks.map(t => t.id), 0) + 1;
+        localStorage.setItem('pm_tasks', JSON.stringify(tasks));
+        localStorage.setItem('pm_version', DATA_VERSION);
+        rerenderCurrentView();
+      }
+      setSyncStatus('☁️ 同期済み');
+    }, () => setSyncStatus('⚠️ 未同期'));
+  }).catch(() => setSyncStatus('⚠️ 未同期'));
+}
+
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  if (user) {
+    document.getElementById('login-overlay').classList.add('hidden');
+    const lbl = document.getElementById('logout-label');
+    if (lbl) lbl.textContent = 'ログアウト（' + (user.displayName || user.email) + '）';
+    startSync();
+  } else {
+    if (unsubscribeSync) { unsubscribeSync(); unsubscribeSync = null; }
+    document.getElementById('login-overlay').classList.remove('hidden');
+    setSyncStatus('');
+  }
+});
+
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+renderTasks();
+</script>
+</body>
+</html>
