@@ -175,6 +175,7 @@ tr:hover td { background: #f8fafc; }
 .chip-naka      { background: #dbeafe; color: #1e40af; }
 .chip-hibiki    { background: #ecfdf5; color: #065f46; border: 1px solid #6ee7b7; }
 .chip-iol       { background: #e0f2fe; color: #075985; }
+.chip-other     { background: #f1f5f9; color: #475569; }
 
 /* ── BUTTONS ── */
 .btn {
@@ -292,6 +293,7 @@ tr:hover td { background: #f8fafc; }
   .stat-card .val { font-size: 18px; }
   #task-table-wrap { display: none; }
   #task-cards { display: block; }
+  #revenue-table-wrap, #outsource-table-wrap { display: none; }
   .modal-overlay { align-items: flex-end; padding: 0; }
   .modal { border-radius: 20px 20px 0 0; max-height: 92vh; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   .summary-grid { grid-template-columns: 1fr; }
@@ -302,6 +304,7 @@ tr:hover td { background: #f8fafc; }
 @media (min-width: 769px) {
   #task-cards { display: none; }
   #task-table-wrap { display: block; }
+  #revenue-cards, #outsource-cards { display: none; }
   #fab { display: none !important; }
   #bottom-nav { display: none !important; }
   #topbar .add-btn { display: inline-flex; }
@@ -390,6 +393,7 @@ tr:hover td { background: #f8fafc; }
     <a onclick="filterByClient('なかしーさん・とけるさん');closeDrawer()"><span class="ic">🎬</span>なかしー・とける</a>
     <a onclick="filterByClient('響様動画編集');closeDrawer()"><span class="ic">🦷</span>響様動画編集</a>
     <a onclick="filterByClient('イオル賃貸');closeDrawer()"><span class="ic">🏢</span>イオル賃貸</a>
+    <a onclick="filterByClient('その他');closeDrawer()"><span class="ic">📁</span>その他</a>
   </nav>
 </div>
 
@@ -462,17 +466,19 @@ tr:hover td { background: #f8fafc; }
     <div id="view-revenue" class="hidden">
       <div id="revenue-month-tabs" class="month-tabs"></div>
       <div id="revenue-warning"></div>
-      <div class="table-wrap"><div class="scroll-x">
+      <div class="table-wrap" id="revenue-table-wrap"><div class="scroll-x">
         <table id="revenue-table"></table>
       </div></div>
+      <div class="summary-grid" id="revenue-cards"></div>
     </div>
 
     <!-- Outsource View -->
     <div id="view-outsource" class="hidden">
       <div id="outsource-month-tabs" class="month-tabs"></div>
-      <div class="table-wrap"><div class="scroll-x">
+      <div class="table-wrap" id="outsource-table-wrap"><div class="scroll-x">
         <table id="outsource-table"></table>
       </div></div>
+      <div class="summary-grid" id="outsource-cards"></div>
     </div>
 
   </div>
@@ -524,6 +530,7 @@ tr:hover td { background: #f8fafc; }
             <option>なかしーさん・とけるさん</option>
             <option>響様動画編集</option>
             <option>イオル賃貸</option>
+            <option>その他</option>
           </select>
         </div>
         <div class="form-group">
@@ -592,7 +599,7 @@ tr:hover td { background: #f8fafc; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
 // ===================== DATA =====================
-const CLIENTS = ['HAREBUTAI','クウカン不動産','テレスターさん','ロトスショート動画','きたごはん','なかしーさん・とけるさん','響様動画編集','イオル賃貸'];
+const CLIENTS = ['HAREBUTAI','クウカン不動産','テレスターさん','ロトスショート動画','きたごはん','なかしーさん・とけるさん','響様動画編集','イオル賃貸','その他'];
 const OUTSOURCERS = ['山中','あっくん','ともよさん','そうちゃん','タカト'];
 const OUTSOURCE_RATE = 2500;
 const DATA_VERSION = '4';
@@ -741,7 +748,7 @@ function fmtDate(d)  { return d ? d.replace(/-/g,'/') : '—'; }
 function clientChipClass(c) {
   const m = {'HAREBUTAI':'harebutai','クウカン不動産':'kuukan','テレスターさん':'telestar',
     'ロトスショート動画':'rotos','きたごはん':'kita','なかしーさん・とけるさん':'naka',
-    '響様動画編集':'hibiki','イオル賃貸':'iol'};
+    '響様動画編集':'hibiki','イオル賃貸':'iol','その他':'other'};
   return m[c] ? 'chip chip-'+m[c] : 'chip';
 }
 
@@ -941,6 +948,27 @@ function renderRevenue() {
     <td style="text-align:right;background:#c8e6c9">${yen(CLIENTS.reduce((s,c)=>s+expT(c),0))}</td>
   </tr>
   </tbody>`;
+
+  // モバイル用カード
+  const mlbl = fmtM(revenueMonth);
+  document.getElementById('revenue-cards').innerHTML = CLIENTS.map(c => {
+    const nm = noMonthRevC(c);
+    return `<div class="client-card">
+      <div class="ch"><h3>${esc(c)}</h3>${nm>0?`<div class="cnt" style="color:#fecaca">⚠️ 月未設定 ¥${nm.toLocaleString()}</div>`:''}</div>
+      <div class="cb">
+        <div class="pr"><span>${mlbl} 納品済み</span><span>${yen(done(c,revenueMonth))}</span></div>
+        <div class="pr"><span>${mlbl} 見込み</span><span>${yen(exp(c,revenueMonth))}</span></div>
+        <div class="tot"><span>合計 納品済み ✅</span><span>${yen(doneT(c))}</span></div>
+      </div>
+    </div>`;
+  }).join('') + `<div class="client-card" style="border:2px solid var(--accent)">
+    <div class="ch" style="background:var(--accent)"><h3>月計</h3></div>
+    <div class="cb">
+      <div class="pr"><span>${mlbl} 納品済み</span><span>${yen(CLIENTS.reduce((s,c)=>s+done(c,revenueMonth),0))}</span></div>
+      <div class="pr"><span>${mlbl} 見込み</span><span>${yen(CLIENTS.reduce((s,c)=>s+exp(c,revenueMonth),0))}</span></div>
+      <div class="tot"><span>合計 納品済み ✅</span><span>${yen(CLIENTS.reduce((s,c)=>s+doneT(c),0))}</span></div>
+    </div>
+  </div>`;
 }
 
 // ===================== OUTSOURCE =====================
@@ -974,6 +1002,25 @@ function renderOutsource() {
     <td style="text-align:right">${ft.length}本</td>
     <td style="text-align:right">¥${(ft.length*OUTSOURCE_RATE).toLocaleString()}</td>
   </tr></tbody>`;
+
+  // モバイル用カード
+  document.getElementById('outsource-cards').innerHTML = OUTSOURCERS.map(o => {
+    const cnt  = ft.filter(t=>t.outsource===o).length;
+    const done = ftDone.filter(t=>t.outsource===o).length;
+    return `<div class="client-card">
+      <div class="ch"><h3>${esc(o)}</h3><div class="cnt">納品済み ${done}本</div></div>
+      <div class="cb">
+        <div class="pr"><span>${ml} 本数</span><span>${cnt}本</span></div>
+        <div class="tot"><span>${ml} 外注費</span><span>¥${(cnt*OUTSOURCE_RATE).toLocaleString()}</span></div>
+      </div>
+    </div>`;
+  }).join('') + `<div class="client-card" style="border:2px solid #2e7d32">
+    <div class="ch" style="background:#2e7d32"><h3>合計</h3></div>
+    <div class="cb">
+      <div class="pr"><span>本数</span><span>${ft.length}本</span></div>
+      <div class="tot"><span>外注費</span><span>¥${(ft.length*OUTSOURCE_RATE).toLocaleString()}</span></div>
+    </div>
+  </div>`;
 }
 
 // ===================== MODAL =====================
