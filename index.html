@@ -176,6 +176,8 @@ tr:hover td { background: #f8fafc; }
 .chip-hibiki    { background: #ecfdf5; color: #065f46; border: 1px solid #6ee7b7; }
 .chip-iol       { background: #e0f2fe; color: #075985; }
 .chip-other     { background: #f1f5f9; color: #475569; }
+.chip-revolt    { background: #fee2e2; color: #991b1b; }
+.chip-think     { background: #dcfce7; color: #166534; }
 
 /* ── BUTTONS ── */
 .btn {
@@ -393,6 +395,8 @@ tr:hover td { background: #f8fafc; }
     <a onclick="filterByClient('なかしーさん・とけるさん');closeDrawer()"><span class="ic">🎬</span>なかしー・とける</a>
     <a onclick="filterByClient('響様動画編集');closeDrawer()"><span class="ic">🦷</span>響様動画編集</a>
     <a onclick="filterByClient('イオル賃貸');closeDrawer()"><span class="ic">🏢</span>イオル賃貸</a>
+    <a onclick="filterByClient('レボルト');closeDrawer()"><span class="ic">🎥</span>レボルト</a>
+    <a onclick="filterByClient('thinkgarbage');closeDrawer()"><span class="ic">♻️</span>thinkgarbage</a>
     <a onclick="filterByClient('その他');closeDrawer()"><span class="ic">📁</span>その他</a>
   </nav>
 </div>
@@ -530,6 +534,8 @@ tr:hover td { background: #f8fafc; }
             <option>なかしーさん・とけるさん</option>
             <option>響様動画編集</option>
             <option>イオル賃貸</option>
+            <option>レボルト</option>
+            <option>thinkgarbage</option>
             <option>その他</option>
           </select>
         </div>
@@ -599,7 +605,7 @@ tr:hover td { background: #f8fafc; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
 // ===================== DATA =====================
-const CLIENTS = ['HAREBUTAI','クウカン不動産','テレスターさん','ロトスショート動画','きたごはん','なかしーさん・とけるさん','響様動画編集','イオル賃貸','その他'];
+const CLIENTS = ['HAREBUTAI','クウカン不動産','テレスターさん','ロトスショート動画','きたごはん','なかしーさん・とけるさん','響様動画編集','イオル賃貸','レボルト','thinkgarbage','その他'];
 const OUTSOURCERS = ['山中','あっくん','ともよさん','そうちゃん','タカト'];
 const OUTSOURCE_RATE = 2500;
 const DATA_VERSION = '4';
@@ -748,7 +754,7 @@ function fmtDate(d)  { return d ? d.replace(/-/g,'/') : '—'; }
 function clientChipClass(c) {
   const m = {'HAREBUTAI':'harebutai','クウカン不動産':'kuukan','テレスターさん':'telestar',
     'ロトスショート動画':'rotos','きたごはん':'kita','なかしーさん・とけるさん':'naka',
-    '響様動画編集':'hibiki','イオル賃貸':'iol','その他':'other'};
+    '響様動画編集':'hibiki','イオル賃貸':'iol','レボルト':'revolt','thinkgarbage':'think','その他':'other'};
   return m[c] ? 'chip chip-'+m[c] : 'chip';
 }
 
