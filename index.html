@@ -348,8 +348,12 @@ tr:hover td { background: #f8fafc; }
 @media (pointer:coarse) { .pl-grip { display:block; } .pl-item { cursor:default; } }
 .pl-check { width:18px; height:18px; border:2px solid #94a3b8; border-radius:50%; flex-shrink:0; margin-top:1px; cursor:pointer; background:#fff; padding:0; color:#fff; font-size:11px; line-height:1; font-family:inherit; }
 .pl-item.done .pl-check { background:#22c55e; border-color:#22c55e; }
-.pl-text { flex:1; min-width:0; font-size:13px; line-height:1.4; overflow-wrap:anywhere; cursor:text; }
-.pl-edit { flex:1; min-width:0; font-size:13px; font-family:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:5px; -webkit-user-select:text; user-select:text; }
+.pl-body { flex:1; min-width:0; }
+.pl-text { font-size:13px; line-height:1.4; overflow-wrap:anywhere; cursor:text; }
+.pl-meta { font-size:11px; color:var(--muted); margin-top:2px; line-height:1.35; }
+.pl-item.late { border-left:4px solid #ef4444; background:#fef2f2; }
+.pl-help { font-size:12px; color:var(--muted); margin:-4px 0 12px; line-height:1.5; }
+.pl-edit { width:100%; min-width:0; font-size:13px; font-family:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:5px; -webkit-user-select:text; user-select:text; }
 .pl-del { border:none; background:none; color:var(--muted); cursor:pointer; font-size:13px; padding:0 2px; opacity:.6; font-family:inherit; }
 .pl-del:hover { opacity:1; color:#ef4444; }
 .pl-add { width:100%; border:1px dashed var(--border); border-radius:8px; padding:7px 9px; font-size:13px; font-family:inherit; margin-top:8px; background:transparent; color:var(--text); }
@@ -528,7 +532,9 @@ body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display
         <button class="btn btn-sm" onclick="shiftPlannerWeek(0)">今週</button>
         <button class="btn btn-sm" onclick="shiftPlannerWeek(1)">次の週 ▶</button>
         <span class="pl-label" id="pl-label"></span>
+        <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="plAutoGenerate()">🤖 仕事タスクを自動で組む</button>
       </div>
+      <div class="pl-help">締切の2日前（土日なら金曜）に自分の作業が終わるよう、平日9:00〜17:00へ自動で配置します。作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。配置後はドラッグで自由に調整できます。</div>
       <div class="pl-week" id="pl-week"></div>
       <div id="pl-backlog-wrap"></div>
     </div>
@@ -640,6 +646,10 @@ body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display
           <label>備考</label>
           <input type="text" id="f-memo" placeholder="メモ">
         </div>
+      </div>
+      <div class="form-group">
+        <label>自分の作業時間の見込み（h）</label>
+        <input type="number" id="f-est" min="0" step="0.5" inputmode="decimal" placeholder="空欄＝自動見積り（週間プランナーの自動配置用）">
       </div>
     </div>
     <div class="modal-footer">
@@ -1091,7 +1101,7 @@ function onDeadlineChange() {
 function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'タスク追加';
-  ['f-name','f-deadline','f-price','f-memo'].forEach(id=>document.getElementById(id).value='');
+  ['f-name','f-deadline','f-price','f-memo','f-est'].forEach(id=>document.getElementById(id).value='');
   ['f-client','f-outsource','f-progress'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-delivery-month').value = taskMonth; // 選択中の月をデフォルトに
   document.getElementById('f-zone').value = 'formal';
@@ -1112,6 +1122,7 @@ function openEditModal(id) {
   document.getElementById('f-price').value          = t.price||'';
   document.getElementById('f-memo').value           = t.memo||'';
   document.getElementById('f-zone').value           = t.zone||'formal';
+  document.getElementById('f-est').value            = t.estHours||'';
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
@@ -1135,6 +1146,7 @@ function saveTask() {
     price:         priceVal !== '' ? Number(priceVal) : '',
     memo:          document.getElementById('f-memo').value.trim(),
     zone:          document.getElementById('f-zone').value,
+    estHours:      Number(document.getElementById('f-est').value) > 0 ? Number(document.getElementById('f-est').value) : '',
   };
   if (editingId !== null) {
     const i = tasks.findIndex(t=>t.id===editingId);
@@ -1232,10 +1244,19 @@ function plBusy() {
 }
 
 function plItemHTML(x) {
-  return `<div class="pl-item${x.done?' done':''}" data-id="${esc(x.id)}">
+  let meta = '';
+  if (x.auto) {                                      // 自動配置された仕事タスク
+    const p = [];
+    if (x.start != null) p.push(fmtHour(x.start) + '–' + fmtHour(x.end));
+    p.push(x.hours + 'h');
+    if (x.client) p.push(x.client);
+    if (x.target) p.push('目標 ' + fmtMD(parseYMD(x.target)) + (x.late ? ' ⚠️遅れ' : ''));
+    meta = `<div class="pl-meta">${esc(p.join('　'))}</div>`;
+  }
+  return `<div class="pl-item${x.done?' done':''}${x.late?' late':''}" data-id="${esc(x.id)}">
     <span class="pl-grip" aria-hidden="true">⋮⋮</span>
     <button class="pl-check" data-act="toggle" aria-label="完了">${x.done?'✓':''}</button>
-    <span class="pl-text" data-act="edit">${esc(x.text)}</span>
+    <div class="pl-body"><span class="pl-text" data-act="edit">${esc(x.text)}</span>${meta}</div>
     <button class="pl-del" data-act="del" aria-label="削除">✕</button>
   </div>`;
 }
@@ -1312,6 +1333,90 @@ function plClick(e) {
     plannerItems = plannerItems.filter(i => i.id !== id);
     savePlanner(); renderPlanner(); showToast('削除しました');
   }
+}
+
+// ── 仕事タスクの自動配置（作業時間は自動見積り→締切の2日前に終わるよう平日9〜17時へ）──
+const WORK_START = 9, WORK_END = 17, BUFFER_DAYS = 2;
+function parseYMD(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function isWeekend(d) { const w = d.getDay(); return w === 0 || w === 6; }
+function nextWorkday(d) {
+  const n = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1);
+  while (isWeekend(n)) n.setDate(n.getDate()+1);
+  return n;
+}
+function fmtHour(h) { const hh = Math.floor(h), mm = Math.round((h-hh)*60); return hh+':'+String(mm).padStart(2,'0'); }
+function roundHalf(h) { return Math.max(0.5, Math.round(h*2)/2); }
+
+// 自分の作業時間の見積り（タスク編集の「作業時間の見込み」があれば優先）
+function estimateHours(t) {
+  const manual = Number(t.estHours);
+  if (manual > 0) return manual;
+  if (t.outsource) return 0.5;                       // 外注に出したタスク → 自分は確認・修正対応のみ
+  const p = Number(t.price) || 0;
+  let base;
+  if (/撮影/.test(t.name)) base = 4;
+  else if (/ディレクション/.test(t.name)) base = 2;
+  else if (!p) base = 2;
+  else if (p <= 3000) base = 1.5;
+  else if (p <= 5000) base = 2;
+  else if (p <= 8000) base = 3;
+  else if (p <= 15000) base = 4;
+  else base = 6;
+  if (t.progress === '2_確認中') base = 0.5;          // 修正対応のみ
+  else if (t.progress === '4_編集中') base *= 0.6;    // 残り分
+  return roundHalf(base);
+}
+
+function plAutoGenerate() {
+  const open = tasks.filter(t => t.zone === 'formal' && t.progress !== '1_納品済み');
+  const targets = open.filter(t => t.deadline);
+  const noDl = open.length - targets.length;
+  if (!targets.length) { alert('締切が設定された未納品タスクがありません。'); return; }
+  const now = new Date();
+  const todayStr = ymd(now);
+  const isOldAuto = x => x.auto && !x.done && x.day && x.day >= todayStr;
+  const oldN = plannerItems.filter(isOldAuto).length;
+  if (!confirm(`未納品で締切のある仕事タスク ${targets.length} 件を、締切の${BUFFER_DAYS}日前に終わるよう、平日${WORK_START}:00〜${WORK_END}:00へ自動で配置します。` +
+      (oldN ? `\n前回の自動配置（未完了の${oldN}件）は置き換えます。手動で追加した項目は変わりません。` : '') + '\nよろしいですか？')) return;
+
+  const items = targets.map(t => {
+    const dl = parseYMD(t.deadline);
+    const target = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate() - BUFFER_DAYS);
+    while (isWeekend(target)) target.setDate(target.getDate() - 1);          // 土日なら金曜へ前倒し
+    return {t, target, est: estimateHours(t)};
+  }).sort((a,b) => a.target - b.target || parseYMD(a.t.deadline) - parseYMD(b.t.deadline) || a.t.id - b.t.id);
+
+  let day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let cur = Math.ceil((now.getHours() + now.getMinutes()/60) * 2) / 2;
+  if (isWeekend(day) || cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
+  else if (cur < WORK_START) cur = WORK_START;
+
+  const made = [], lateNames = [];
+  items.forEach(it => {
+    const chunks = [];
+    let rest = it.est;
+    while (rest > 1e-9) {
+      if (cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
+      const take = Math.min(rest, WORK_END - cur);
+      chunks.push({id: plNewId(), text: it.t.name, done: false, day: ymd(day), auto: true, taskId: it.t.id,
+                   hours: take, start: cur, end: cur + take, client: it.t.client || '', target: ymd(it.target), late: false});
+      cur += take; rest -= take;
+    }
+    const finish = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    if (finish > it.target) { chunks.forEach(c => c.late = true); lateNames.push(it.t.name); }
+    made.push(...chunks);
+  });
+
+  plannerItems = plannerItems.filter(x => !isOldAuto(x)).concat(made);
+  savePlanner();
+  // 最初の配置がある週へ移動（今日が土日だと配置は来週から始まるため）
+  const monOf = d => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay()+6)%7));
+  plannerWeekOffset = made.length ? Math.round((monOf(parseYMD(made[0].day)) - monOf(now)) / (7*86400000)) : 0;
+  renderPlanner();
+  const hours = items.reduce((s, it) => s + it.est, 0);
+  alert(`${items.length}件（合計${hours}時間）を配置しました。` +
+        (lateNames.length ? `\n\n⚠️ 締切の${BUFFER_DAYS}日前までに間に合わないタスク（赤で表示）:\n・` + lateNames.join('\n・') : '') +
+        (noDl ? `\n\n締切が未設定の ${noDl} 件は配置していません。` : ''));
 }
 
 // ── ドラッグ&ドロップ（マウス・ペンは項目全体、指はグリップ「⋮⋮」で。HTML5 DnDはスマホで動かないため自前実装）──
@@ -1394,7 +1499,9 @@ function plMove(id, key, beforeId) {
   const idx = plannerItems.findIndex(i => i.id === id);
   if (idx < 0) return;
   const [it] = plannerItems.splice(idx, 1);
-  it.day = key === 'backlog' ? null : key;
+  const newDay = key === 'backlog' ? null : key;
+  if (it.auto && it.day !== newDay) { it.start = null; it.end = null; }   // 時間帯は無効に（作業時間hだけ残す）
+  it.day = newDay;
   const bi = beforeId ? plannerItems.findIndex(i => i.id === beforeId) : -1;
   if (bi >= 0) plannerItems.splice(bi, 0, it); else plannerItems.push(it);
   savePlanner();
