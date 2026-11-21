@@ -340,7 +340,23 @@ tr:hover td { background: #f8fafc; }
 .pl-day.sat h4 { color:#2563eb; }
 .pl-day.sun h4 { color:#dc2626; }
 .pl-list { display:flex; flex-direction:column; gap:6px; flex:1; min-height:36px; }
-.pl-backlog .pl-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); align-content:start; }
+.pl-bottom { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:10px; align-items:start; }
+.pl-side { display:flex; flex-direction:column; gap:10px; }
+.pl-backlog .pl-list { gap:0; }
+.pl-backlog .pl-item { border:none; border-bottom:1px dashed var(--border); border-radius:0; background:transparent; padding:9px 4px; }
+.pl-backlog .pl-item:last-child { border-bottom:none; }
+.pl-card { background:var(--white); border:2px solid var(--border); border-radius:12px; padding:10px; }
+.pl-card h4 { font-size:14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.pl-card h4 span { font-size:11px; color:var(--muted); font-weight:600; }
+.hb-head, .hb-row { display:grid; grid-template-columns:minmax(0,1fr) repeat(7,26px) 18px; gap:4px; align-items:center; padding:3px 0; }
+.hb-head { font-size:11px; color:var(--muted); text-align:center; }
+.hb-d.today { color:var(--accent); font-weight:700; }
+.hb-name { font-size:13px; overflow-wrap:anywhere; }
+.hb-cell { width:22px; height:22px; border-radius:50%; border:2px solid #cbd5e1; background:#fff; padding:0; cursor:pointer; justify-self:center; }
+.hb-cell.on { background:#22c55e; border-color:#22c55e; }
+.pl-memo { width:100%; min-height:120px; resize:vertical; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; line-height:1.5; color:var(--text); }
+.pl-memo:focus { outline:none; border-color:var(--accent); }
+@media (max-width:1100px) { .pl-bottom { grid-template-columns:1fr; } }
 .pl-item { display:flex; align-items:flex-start; gap:7px; padding:7px 8px; border:1px solid var(--border); border-radius:8px; background:#fafbfc; cursor:grab; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .pl-item.done .pl-text { text-decoration:line-through; color:var(--muted); }
 .pl-item.dragging-src { opacity:.3; }
@@ -534,7 +550,7 @@ body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display
         <span class="pl-label" id="pl-label"></span>
         <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="plAutoGenerate()">🤖 仕事タスクを自動で組む</button>
       </div>
-      <div class="pl-help">締切の2日前（土日なら金曜）に自分の作業が終わるよう、平日9:00〜17:00へ自動で配置します。作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。配置後はドラッグで自由に調整できます。</div>
+      <div class="pl-help">締切の2日前（土日なら金曜）に自分の作業が終わるよう、平日9:00〜17:00へ自動で配置します。名前に「撮影」を含むタスクは、2日前ではなく締切当日に配置します。作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。配置後はドラッグで自由に調整できます。</div>
       <div class="pl-week" id="pl-week"></div>
       <div id="pl-backlog-wrap"></div>
     </div>
@@ -1177,7 +1193,7 @@ function exportData() {
   const now = new Date();
   const ts = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) +
              '_' + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
-  const payload = JSON.stringify({version: DATA_VERSION, tasks, planner: plannerItems}, null, 2);
+  const payload = JSON.stringify({version: DATA_VERSION, tasks, planner: plannerItems, habits: plannerHabits, memos: plannerMemos}, null, 2);
   const blob = new Blob([payload], {type: 'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1205,6 +1221,12 @@ function importData(e) {
         plannerItems = obj.planner.filter(x => x && x.id && typeof x.text === 'string');
         savePlanner();
       }
+      if (!Array.isArray(obj)) {                    // 習慣・メモも、入っているバックアップのみ復元
+        let ex = false;
+        if (Array.isArray(obj.habits)) { plannerHabits = obj.habits; ex = true; }
+        if (obj.memos && typeof obj.memos === 'object' && !Array.isArray(obj.memos)) { plannerMemos = obj.memos; ex = true; }
+        if (ex) savePlannerExtras();
+      }
       renderTasks();
       showToast(`✅ ${tasks.length}件のタスクを読み込みました`);
     } catch(err) {
@@ -1227,6 +1249,16 @@ function loadPlanner() {
 // 1件: {id, text, done, day: 'YYYY-MM-DD' | null(=下の「Task」)}。配列の並び順がそのまま各ボックス内の並び順
 let plannerItems = loadPlanner();
 let plannerWeekOffset = 0;
+// 習慣チェック: [{id, name, days:{'YYYY-MM-DD':true}}] / 今週のメモ: {'その週の月曜YYYY-MM-DD': 'テキスト'}
+function loadJSON(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch (e) { return fallback; } }
+let plannerHabits = (() => { const a = loadJSON('pm_habits', []); return Array.isArray(a) ? a : []; })();
+let plannerMemos  = (() => { const o = loadJSON('pm_memos', {}); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; })();
+let plCurWeekKey = '', plMemoTimer = 0;
+function savePlannerExtras() {
+  localStorage.setItem('pm_habits', JSON.stringify(plannerHabits));
+  localStorage.setItem('pm_memos', JSON.stringify(plannerMemos));
+  savePlannerExtrasToCloud();
+}
 let plDrag = null, plSuppressClick = false;
 
 function plNewId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -1240,7 +1272,7 @@ function shiftPlannerWeek(n) { plannerWeekOffset = n === 0 ? 0 : plannerWeekOffs
 function plBusy() {
   if (plDrag && plDrag.active) return true;
   const a = document.activeElement;
-  return !!(a && (a.classList.contains('pl-edit') || (a.classList.contains('pl-add') && a.value)));
+  return !!(a && (a.classList.contains('pl-edit') || a.classList.contains('pl-memo') || (a.classList.contains('pl-add') && a.value)));
 }
 
 function plItemHTML(x) {
@@ -1250,7 +1282,7 @@ function plItemHTML(x) {
     if (x.start != null) p.push(fmtHour(x.start) + '–' + fmtHour(x.end));
     p.push(x.hours + 'h');
     if (x.client) p.push(x.client);
-    if (x.target) p.push('目標 ' + fmtMD(parseYMD(x.target)) + (x.late ? ' ⚠️遅れ' : ''));
+    if (x.target) p.push(x.fixed ? '当日' : '目標 ' + fmtMD(parseYMD(x.target)) + (x.late ? ' ⚠️遅れ' : ''));
     meta = `<div class="pl-meta">${esc(p.join('　'))}</div>`;
   }
   return `<div class="pl-item${x.done?' done':''}${x.late?' late':''}" data-id="${esc(x.id)}">
@@ -1280,13 +1312,62 @@ function renderPlanner() {
     </div>`;
   }).join('');
 
+  plCurWeekKey = ymd(days[0]);
   const bl = plannerItems.filter(x => !x.day);
-  document.getElementById('pl-backlog-wrap').innerHTML = `<div class="pl-backlog" data-drop="backlog">
-    <h4>Task<span>自宅業務以外の「やりたいこと」。日付のボックスへドラッグして予定に入れる</span></h4>
-    <div class="pl-list" data-list="backlog">${bl.map(plItemHTML).join('')}</div>
-    <input class="pl-add" data-add="backlog" placeholder="＋ やりたいことを追加" enterkeyhint="done" onkeydown="plAddKey(event,'backlog')">
+  const habitHead = days.map((d, i) => `<span class="hb-d${ymd(d)===todayStr?' today':''}">${wd[i]}</span>`).join('');
+  const habitRows = plannerHabits.map(h => `<div class="hb-row">
+      <span class="hb-name">${esc(h.name)}</span>
+      ${days.map(d => { const k = ymd(d); return `<button class="hb-cell${h.days && h.days[k] ? ' on' : ''}" onclick="plToggleHabit('${esc(h.id)}','${k}')" aria-label="${esc(h.name)} ${k}"></button>`; }).join('')}
+      <button class="pl-del" onclick="plDeleteHabit('${esc(h.id)}')" aria-label="習慣を削除">✕</button>
+    </div>`).join('');
+  document.getElementById('pl-backlog-wrap').innerHTML = `<div class="pl-bottom">
+    <div class="pl-backlog" data-drop="backlog">
+      <h4>Task<span>自宅業務以外の「やりたいこと」。日付のボックスへドラッグして予定に入れる</span></h4>
+      <div class="pl-list" data-list="backlog">${bl.map(plItemHTML).join('')}</div>
+      <input class="pl-add" data-add="backlog" placeholder="＋ やりたいことを追加" enterkeyhint="done" onkeydown="plAddKey(event,'backlog')">
+    </div>
+    <div class="pl-side">
+      <div class="pl-card">
+        <h4>習慣チェック<span>${fmtMD(days[0])}〜${fmtMD(days[6])}</span></h4>
+        <div class="hb-head"><span></span>${habitHead}<span></span></div>
+        ${habitRows}
+        <input class="pl-add" placeholder="＋ 習慣を追加（例: 筋トレ）" enterkeyhint="done" onkeydown="plHabitAddKey(event)">
+      </div>
+      <div class="pl-card">
+        <h4>今週のメモ<span>${fmtMD(days[0])}〜${fmtMD(days[6])}</span></h4>
+        <textarea class="pl-memo" placeholder="今週の目標・振り返りなど" oninput="plMemoInput(this)" onblur="plMemoFlush()">${esc(plannerMemos[plCurWeekKey] || '')}</textarea>
+      </div>
+    </div>
   </div>`;
 }
+
+function plHabitAddKey(e) {
+  if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+  const v = e.target.value.trim();
+  if (!v) return;
+  plannerHabits.push({id: plNewId(), name: v, days: {}});
+  savePlannerExtras();
+  renderPlanner();
+  const inp = document.querySelector('.pl-side .pl-add'); if (inp) inp.focus();
+}
+function plToggleHabit(id, k) {
+  const h = plannerHabits.find(x => x.id === id); if (!h) return;
+  if (!h.days) h.days = {};
+  if (h.days[k]) delete h.days[k]; else h.days[k] = true;
+  savePlannerExtras(); renderPlanner();
+}
+function plDeleteHabit(id) {
+  const h = plannerHabits.find(x => x.id === id); if (!h) return;
+  if (!confirm(`習慣「${h.name}」を削除しますか？（過去のチェックも消えます）`)) return;
+  plannerHabits = plannerHabits.filter(x => x.id !== id);
+  savePlannerExtras(); renderPlanner(); showToast('削除しました');
+}
+function plMemoInput(el) {
+  if (el.value) plannerMemos[plCurWeekKey] = el.value; else delete plannerMemos[plCurWeekKey];
+  localStorage.setItem('pm_memos', JSON.stringify(plannerMemos));
+  clearTimeout(plMemoTimer); plMemoTimer = setTimeout(savePlannerExtras, 700);   // 入力が止まってからクラウドへ
+}
+function plMemoFlush() { clearTimeout(plMemoTimer); savePlannerExtras(); }
 
 function plAddKey(e, key) {
   if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;   // 日本語変換中のEnterは無視
@@ -1381,31 +1462,61 @@ function plAutoGenerate() {
 
   const items = targets.map(t => {
     const dl = parseYMD(t.deadline);
-    const target = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate() - BUFFER_DAYS);
-    while (isWeekend(target)) target.setDate(target.getDate() - 1);          // 土日なら金曜へ前倒し
-    return {t, target, est: estimateHours(t)};
-  }).sort((a,b) => a.target - b.target || parseYMD(a.t.deadline) - parseYMD(b.t.deadline) || a.t.id - b.t.id);
+    const shoot = /撮影/.test(t.name);                          // 撮影＝その日に現地へ行く → 締切当日に固定
+    const target = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate() - (shoot ? 0 : BUFFER_DAYS));
+    if (!shoot) while (isWeekend(target)) target.setDate(target.getDate() - 1);   // 土日なら金曜へ前倒し
+    return {t, target, est: estimateHours(t), shoot};
+  });
 
+  const nowCur = Math.ceil((now.getHours() + now.getMinutes()/60) * 2) / 2;
+  const busy = {};                                              // 'YYYY-MM-DD' → 埋まっている時間帯 [[開始,終了],...]
+  const freeSeg = (key, from) => {                              // from 以降で最初の空き時間帯（9〜17時の範囲）
+    let st = Math.max(from, WORK_START);
+    for (const [bs, be] of (busy[key] || []).slice().sort((p, q) => p[0] - q[0])) {
+      if (st >= be) continue;
+      if (st < bs) return [st, bs];
+      st = be;
+    }
+    return st < WORK_END ? [st, WORK_END] : null;
+  };
+  const mk = (it, key, st, en, fixed) => ({id: plNewId(), text: it.t.name, done: false, day: key, auto: true, taskId: it.t.id,
+      hours: en - st, start: st, end: en, client: it.t.client || '', target: ymd(it.target), late: false, fixed});
+  const made = [], lateNames = [], flexible = [];
+
+  // ① 撮影は締切当日に固定（同じ日に複数あれば順に）
+  items.filter(it => it.shoot).sort((p, q) => p.target - q.target || p.t.id - q.t.id).forEach(it => {
+    const key = ymd(it.target);
+    if (key < todayStr) { flexible.push(it); return; }           // 日付を過ぎた撮影 → 通常の枠へ（遅れ表示）
+    const seg = freeSeg(key, key === todayStr ? nowCur : WORK_START);
+    if (!seg && key === todayStr) { flexible.push(it); return; } // 今日で、もう終業時刻を過ぎている
+    const st = seg ? seg[0] : Math.max(WORK_END, ...(busy[key] || []).map(r => r[1]));
+    (busy[key] = busy[key] || []).push([st, st + it.est]);
+    made.push(mk(it, key, st, st + it.est, true));
+  });
+
+  // ② それ以外は目標日が早い順に、撮影の時間を避けて平日9〜17時へ
+  flexible.push(...items.filter(it => !it.shoot));
+  flexible.sort((p, q) => p.target - q.target || parseYMD(p.t.deadline) - parseYMD(q.t.deadline) || p.t.id - q.t.id);
   let day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let cur = Math.ceil((now.getHours() + now.getMinutes()/60) * 2) / 2;
+  let cur = nowCur;
   if (isWeekend(day) || cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
   else if (cur < WORK_START) cur = WORK_START;
-
-  const made = [], lateNames = [];
-  items.forEach(it => {
+  flexible.forEach(it => {
     const chunks = [];
     let rest = it.est;
     while (rest > 1e-9) {
-      if (cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
-      const take = Math.min(rest, WORK_END - cur);
-      chunks.push({id: plNewId(), text: it.t.name, done: false, day: ymd(day), auto: true, taskId: it.t.id,
-                   hours: take, start: cur, end: cur + take, client: it.t.client || '', target: ymd(it.target), late: false});
-      cur += take; rest -= take;
+      const key = ymd(day);
+      const seg = freeSeg(key, cur);
+      if (!seg) { day = nextWorkday(day); cur = WORK_START; continue; }
+      const take = Math.min(rest, seg[1] - seg[0]);
+      chunks.push(mk(it, key, seg[0], seg[0] + take, false));
+      (busy[key] = busy[key] || []).push([seg[0], seg[0] + take]);
+      cur = seg[0] + take; rest -= take;
     }
-    const finish = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-    if (finish > it.target) { chunks.forEach(c => c.late = true); lateNames.push(it.t.name); }
+    if (parseYMD(chunks[chunks.length - 1].day) > it.target) { chunks.forEach(c => c.late = true); lateNames.push(it.t.name); }
     made.push(...chunks);
   });
+  made.sort((p, q) => p.day < q.day ? -1 : p.day > q.day ? 1 : p.start - q.start);
 
   plannerItems = plannerItems.filter(x => !isOldAuto(x)).concat(made);
   savePlanner();
@@ -1478,21 +1589,8 @@ function plPointerMove(e) {
 // ドロップ位置：ポインタに一番近い項目の前／後ろ
 function plFindBefore(list, dragId, x, y) {
   const els = [...list.querySelectorAll('.pl-item')].filter(n => n.dataset.id !== dragId);
-  if (list.dataset.list !== 'backlog') {
-    const t = els.find(n => { const r = n.getBoundingClientRect(); return y < r.top + r.height/2; });
-    return t ? t.dataset.id : null;
-  }
-  let best = null, bd = Infinity, bc = null;      // 「Task」は複数列のグリッドなので距離で判定
-  els.forEach(n => {
-    const r = n.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
-    const dist = Math.hypot(x - cx, y - cy);
-    if (dist < bd) { bd = dist; best = n; bc = {cx, cy, h: r.height}; }
-  });
-  if (!best) return null;
-  const before = Math.abs(y - bc.cy) < bc.h/2 ? x < bc.cx : y < bc.cy;
-  if (before) return best.dataset.id;
-  const nxt = els[els.indexOf(best) + 1];
-  return nxt ? nxt.dataset.id : null;
+  const t = els.find(n => { const r = n.getBoundingClientRect(); return y < r.top + r.height/2; });
+  return t ? t.dataset.id : null;
 }
 
 function plMove(id, key, beforeId) {
@@ -1591,6 +1689,13 @@ function savePlannerToCloud() {
     .catch(() => { setSyncStatus('⚠️ 未同期'); showToast('⚠️ クラウド保存に失敗しました'); });
 }
 
+function savePlannerExtrasToCloud() {
+  if (!currentUser) return;
+  userDoc().set({ habits: plannerHabits, memos: plannerMemos, extrasUpdatedAt: new Date().toISOString() }, { merge: true })
+    .then(() => setSyncStatus('☁️ 同期済み'))
+    .catch(() => { setSyncStatus('⚠️ 未同期'); showToast('⚠️ クラウド保存に失敗しました'); });
+}
+
 function rerenderCurrentView() {
   if (currentView === 'tasks')    renderTasks();
   if (currentView === 'summary')  renderSummary();
@@ -1604,11 +1709,15 @@ function startSync() {
   userDoc().get().then(snap => {
     if (!snap.exists && tasks.length > 0) {
       // 初回ログイン：この端末のデータをクラウドへ移行
-      return userDoc().set({ version: DATA_VERSION, tasks, planner: plannerItems, updatedAt: new Date().toISOString() });
+      return userDoc().set({ version: DATA_VERSION, tasks, planner: plannerItems, habits: plannerHabits, memos: plannerMemos, updatedAt: new Date().toISOString() });
     }
-    if (snap.exists && !Array.isArray(snap.data().planner) && plannerItems.length > 0) {
-      // クラウドにプランナーがまだ無ければ、この端末のものを移行
-      return userDoc().set({ planner: plannerItems, plannerUpdatedAt: new Date().toISOString() }, { merge: true });
+    if (snap.exists) {
+      // クラウドに無い項目だけ、この端末のものを移行（既にあるクラウド側は上書きしない）
+      const d0 = snap.data(), up = {};
+      if (!Array.isArray(d0.planner) && plannerItems.length) up.planner = plannerItems;
+      if (!Array.isArray(d0.habits) && plannerHabits.length) up.habits = plannerHabits;
+      if (!d0.memos && Object.keys(plannerMemos).length) up.memos = plannerMemos;
+      if (Object.keys(up).length) return userDoc().set(up, { merge: true });
     }
   }).then(() => {
     unsubscribeSync = userDoc().onSnapshot(snap => {
@@ -1623,6 +1732,15 @@ function startSync() {
       if (d && Array.isArray(d.planner) && JSON.stringify(d.planner) !== JSON.stringify(plannerItems)) {
         plannerItems = d.planner;
         localStorage.setItem('pm_planner', JSON.stringify(plannerItems));
+      }
+      if (d && Array.isArray(d.habits) && JSON.stringify(d.habits) !== JSON.stringify(plannerHabits)) {
+        plannerHabits = d.habits;
+        localStorage.setItem('pm_habits', JSON.stringify(plannerHabits));
+      }
+      const typing = document.activeElement && document.activeElement.classList.contains('pl-memo');
+      if (d && d.memos && typeof d.memos === 'object' && !typing && JSON.stringify(d.memos) !== JSON.stringify(plannerMemos)) {
+        plannerMemos = d.memos;
+        localStorage.setItem('pm_memos', JSON.stringify(plannerMemos));
       }
       rerenderCurrentView();
       setSyncStatus('☁️ 同期済み');
