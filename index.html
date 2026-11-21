@@ -327,6 +327,23 @@ tr:hover td { background: #f8fafc; }
 .month-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .month-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
 
+/* ── SCHEDULE ── */
+.sched-nav { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.sched-nav .sched-label { font-weight:700; font-size:15px; margin:0 6px; }
+.sched-week { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:18px; }
+.sched-day { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:10px; min-height:120px; }
+.sched-day.today { border:2px solid var(--accent); }
+.sched-day h4 { font-size:13px; margin-bottom:8px; display:flex; justify-content:space-between; }
+.sched-day h4 span { color:var(--muted); font-weight:500; }
+.sched-block { border-left:4px solid var(--accent); background:#f0f7ff; border-radius:8px; padding:7px 9px; margin-bottom:7px; cursor:pointer; }
+.sched-block.late { border-left-color:#ef4444; background:#fef2f2; }
+.sched-block .sb-time { font-size:11px; color:var(--muted); font-weight:700; }
+.sched-block .sb-name { font-size:13px; font-weight:600; line-height:1.35; margin:2px 0; word-break:break-all; }
+.sched-block .sb-meta { font-size:11px; color:var(--muted); }
+.sched-empty { font-size:12px; color:var(--muted); text-align:center; padding:14px 0; }
+.sched-note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:9px 12px; font-size:12px; margin-bottom:12px; color:#854d0e; }
+@media (max-width:768px) { .sched-week { grid-template-columns:1fr; } }
+
 /* ── LOGIN ── */
 #login-overlay {
   position: fixed; inset: 0; z-index: 500;
@@ -380,6 +397,7 @@ tr:hover td { background: #f8fafc; }
     <a data-view="summary"  onclick="switchView('summary');closeDrawer()"><span class="ic">📊</span>取引先サマリー</a>
     <a data-view="revenue"  onclick="switchView('revenue');closeDrawer()"><span class="ic">💰</span>月次収入</a>
     <a data-view="outsource" onclick="switchView('outsource');closeDrawer()"><span class="ic">👥</span>外注費集計</a>
+    <a data-view="schedule" onclick="switchView('schedule');closeDrawer()"><span class="ic">🗓️</span>週間スケジュール</a>
     <div class="sec">データ管理</div>
     <a onclick="exportData();closeDrawer()"><span class="ic">💾</span>バックアップ保存</a>
     <a onclick="document.getElementById('import-input').click();closeDrawer()"><span class="ic">📂</span>バックアップ読込</a>
@@ -485,6 +503,20 @@ tr:hover td { background: #f8fafc; }
       <div class="summary-grid" id="outsource-cards"></div>
     </div>
 
+    <!-- Schedule View -->
+    <div id="view-schedule" class="hidden">
+      <div class="sched-nav">
+        <button class="btn btn-sm" onclick="shiftScheduleWeek(-1)">◀ 前の週</button>
+        <button class="btn btn-sm" onclick="shiftScheduleWeek(0)">今週</button>
+        <button class="btn btn-sm" onclick="shiftScheduleWeek(1)">次の週 ▶</button>
+        <span class="sched-label" id="sched-label"></span>
+      </div>
+      <div class="stats" id="sched-stats"></div>
+      <div id="sched-notes"></div>
+      <div class="sched-week" id="sched-week"></div>
+      <div class="table-wrap"><div class="scroll-x"><table id="sched-table"></table></div></div>
+    </div>
+
   </div>
 </div>
 
@@ -505,6 +537,9 @@ tr:hover td { background: #f8fafc; }
     </button>
     <button class="tab" data-view="outsource" onclick="switchView('outsource')">
       <span class="ic">👥</span><span>外注費</span>
+    </button>
+    <button class="tab" data-view="schedule" onclick="switchView('schedule')">
+      <span class="ic">🗓️</span><span>予定</span>
     </button>
   </div>
 </nav>
@@ -589,6 +624,10 @@ tr:hover td { background: #f8fafc; }
           <label>備考</label>
           <input type="text" id="f-memo" placeholder="メモ">
         </div>
+      </div>
+      <div class="form-group">
+        <label>自分の作業時間の見込み（h）</label>
+        <input type="number" id="f-est" min="0" step="0.5" inputmode="decimal" placeholder="空欄＝自動見積り（週間スケジュール用）">
       </div>
     </div>
     <div class="modal-footer">
@@ -729,12 +768,13 @@ function switchView(view) {
     el.classList.toggle('active', el.dataset.view === view));
   document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
   document.getElementById('view-' + view).classList.remove('hidden');
-  const titles = {tasks:'タスク一覧', summary:'取引先サマリー', revenue:'月次収入', outsource:'外注費集計'};
+  const titles = {tasks:'タスク一覧', summary:'取引先サマリー', revenue:'月次収入', outsource:'外注費集計', schedule:'週間スケジュール'};
   document.getElementById('page-title').textContent = titles[view];
   if (view === 'tasks') renderTasks();
   if (view === 'summary') renderSummary();
   if (view === 'revenue') renderRevenue();
   if (view === 'outsource') renderOutsource();
+  if (view === 'schedule') renderSchedule();
 }
 
 function filterByClient(client) {
@@ -1038,7 +1078,7 @@ function onDeadlineChange() {
 function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'タスク追加';
-  ['f-name','f-deadline','f-price','f-memo'].forEach(id=>document.getElementById(id).value='');
+  ['f-name','f-deadline','f-price','f-memo','f-est'].forEach(id=>document.getElementById(id).value='');
   ['f-client','f-outsource','f-progress'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-delivery-month').value = taskMonth; // 選択中の月をデフォルトに
   document.getElementById('f-zone').value = 'formal';
@@ -1059,6 +1099,7 @@ function openEditModal(id) {
   document.getElementById('f-price').value          = t.price||'';
   document.getElementById('f-memo').value           = t.memo||'';
   document.getElementById('f-zone').value           = t.zone||'formal';
+  document.getElementById('f-est').value            = t.estHours||'';
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
@@ -1082,6 +1123,7 @@ function saveTask() {
     price:         priceVal !== '' ? Number(priceVal) : '',
     memo:          document.getElementById('f-memo').value.trim(),
     zone:          document.getElementById('f-zone').value,
+    estHours:      Number(document.getElementById('f-est').value) > 0 ? Number(document.getElementById('f-est').value) : '',
   };
   if (editingId !== null) {
     const i = tasks.findIndex(t=>t.id===editingId);
@@ -1091,7 +1133,7 @@ function saveTask() {
     tasks.push({id:nextId++, ...data});
     showToast('タスクを追加しました ✓');
   }
-  saveTasks(tasks); closeModal(); renderTasks();
+  saveTasks(tasks); closeModal(); rerenderCurrentView();
 }
 
 function deleteTask(id) {
@@ -1147,6 +1189,136 @@ function importData(e) {
 }
 
 
+// ===================== SCHEDULE（週間スケジュール自動作成）=====================
+const WORK_START = 9, WORK_END = 17;   // 平日 9:00〜17:00
+const BUFFER_DAYS = 2;                 // 締切の2日前に作業完了
+let scheduleWeekOffset = 0;
+
+function ymd(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseYMD(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function isWeekend(d) { const w = d.getDay(); return w===0 || w===6; }
+function nextWorkday(d) {
+  const n = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1);
+  while (isWeekend(n)) n.setDate(n.getDate()+1);
+  return n;
+}
+function fmtHour(h) { const hh = Math.floor(h), mm = Math.round((h-hh)*60); return hh+':'+String(mm).padStart(2,'0'); }
+function fmtMD(d) { return (d.getMonth()+1)+'/'+d.getDate(); }
+function roundHalf(h) { return Math.max(0.5, Math.round(h*2)/2); }
+
+// 自分の作業時間の自動見積り（手動入力があればそれを優先）
+function estimateHours(t) {
+  const manual = Number(t.estHours);
+  if (manual > 0) return {h: manual, manual: true};
+  if (t.outsource) return {h: 0.5, manual: false};   // 外注 → 自分は確認・修正対応のみ
+  const p = Number(t.price) || 0;
+  let base;
+  if (/撮影/.test(t.name)) base = 4;
+  else if (/ディレクション/.test(t.name)) base = 2;
+  else if (!p) base = 2;
+  else if (p <= 3000) base = 1.5;
+  else if (p <= 5000) base = 2;
+  else if (p <= 8000) base = 3;
+  else if (p <= 15000) base = 4;
+  else base = 6;
+  if (t.progress === '2_確認中') base = 0.5;          // 修正対応のみ
+  else if (t.progress === '4_編集中') base *= 0.6;    // 残り分
+  return {h: roundHalf(base), manual: false};
+}
+
+// 目標日が早い順に、平日9:00〜17:00へ詰めていく
+function buildSchedule() {
+  const now = new Date();
+  const items = tasks
+    .filter(t => t.zone==='formal' && t.progress!=='1_納品済み' && t.deadline)
+    .map(t => {
+      const dl = parseYMD(t.deadline);
+      const target = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate()-BUFFER_DAYS);
+      while (isWeekend(target)) target.setDate(target.getDate()-1);   // 土日なら金曜へ前倒し
+      const est = estimateHours(t);
+      return {task: t, est: est.h, manual: est.manual, target};
+    })
+    .sort((a,b) => a.target-b.target || parseYMD(a.task.deadline)-parseYMD(b.task.deadline) || a.task.id-b.task.id);
+
+  let day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let cur = Math.ceil((now.getHours() + now.getMinutes()/60) * 2) / 2;
+  if (isWeekend(day) || cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
+  else if (cur < WORK_START) cur = WORK_START;
+
+  const blocks = [];
+  items.forEach(it => {
+    let rest = it.est;
+    while (rest > 1e-9) {
+      if (cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
+      const take = Math.min(rest, WORK_END - cur);
+      blocks.push({id: it.task.id, date: ymd(day), start: cur, end: cur+take});
+      cur += take; rest -= take;
+    }
+    it.finish = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    it.late = it.finish > it.target;
+  });
+  return {items, blocks};
+}
+
+function shiftScheduleWeek(n) {
+  scheduleWeekOffset = n === 0 ? 0 : scheduleWeekOffset + n;
+  renderSchedule();
+}
+
+function renderSchedule() {
+  const {items, blocks} = buildSchedule();
+  const byId = {}; items.forEach(it => byId[it.task.id] = it);
+  const today = new Date();
+  const mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay()+6)%7) + scheduleWeekOffset*7);
+  const days = [0,1,2,3,4].map(i => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate()+i));
+  const wd = ['月','火','水','木','金'];
+  document.getElementById('sched-label').textContent = fmtMD(days[0]) + ' 〜 ' + fmtMD(days[4]);
+
+  const weekBlocks = blocks.filter(b => days.some(d => ymd(d) === b.date));
+  const weekHours = weekBlocks.reduce((s,b) => s + (b.end-b.start), 0);
+  const lateCount = items.filter(it => it.late).length;
+  const lastFinish = items.length ? items.reduce((m,it) => it.finish > m ? it.finish : m, items[0].finish) : null;
+  document.getElementById('sched-stats').innerHTML = `
+    <div class="stat-card"><div class="lbl">この週の作業時間</div><div class="val">${weekHours}h</div></div>
+    <div class="stat-card"><div class="lbl">対象タスク（未納品・締切あり）</div><div class="val">${items.length}</div></div>
+    <div class="stat-card ${lateCount?'orange':'green'}"><div class="lbl">間に合わない</div><div class="val">${lateCount}</div></div>
+    <div class="stat-card blue"><div class="lbl">全タスク完了予定</div><div class="val" style="font-size:16px">${lastFinish ? fmtMD(lastFinish) : '—'}</div></div>`;
+
+  const noDl = tasks.filter(t => t.zone==='formal' && t.progress!=='1_納品済み' && !t.deadline).length;
+  document.getElementById('sched-notes').innerHTML =
+    `<div class="sched-note">締切の${BUFFER_DAYS}日前（土日は金曜）に終わるよう、平日${WORK_START}:00〜${WORK_END}:00へ目標日が早い順に自動で詰めています。作業時間は自動見積り（外注タスクは確認のみ0.5h）。タスクの編集で「作業時間の見込み」を入れると、そちらが優先されます。` +
+    (noDl ? `<br>⚠️ 締切が未設定のタスク ${noDl} 件は含まれていません。` : '') + `</div>`;
+
+  const todayStr = ymd(today);
+  document.getElementById('sched-week').innerHTML = days.map((d,i) => {
+    const bs = weekBlocks.filter(b => b.date === ymd(d)).sort((a,b) => a.start-b.start);
+    const hrs = bs.reduce((s,b) => s + (b.end-b.start), 0);
+    return `<div class="sched-day${ymd(d)===todayStr?' today':''}">
+      <h4>${wd[i]} ${fmtMD(d)}<span>${hrs}h</span></h4>
+      ${bs.length ? bs.map(b => {
+        const it = byId[b.id];
+        return `<div class="sched-block${it.late?' late':''}" onclick="openEditModal(${b.id})">
+          <div class="sb-time">${fmtHour(b.start)}–${fmtHour(b.end)}（${b.end-b.start}h）</div>
+          <div class="sb-name">${esc(it.task.name)}</div>
+          <div class="sb-meta">${esc(it.task.client||'')}　目標 ${fmtMD(it.target)}${it.late?' ⚠️遅れ':''}</div>
+        </div>`;
+      }).join('') : '<div class="sched-empty">予定なし</div>'}
+    </div>`;
+  }).join('');
+
+  document.getElementById('sched-table').innerHTML = `
+    <thead><tr><th>タスク</th><th>取引先</th><th style="text-align:right">作業時間</th><th>納期</th><th>目標（2日前）</th><th>完了予定</th><th>状態</th></tr></thead>
+    <tbody>${items.length ? items.map(it => `<tr onclick="openEditModal(${it.task.id})" style="cursor:pointer">
+      <td style="font-weight:600;white-space:normal;max-width:260px">${esc(it.task.name)}</td>
+      <td>${esc(it.task.client||'—')}</td>
+      <td style="text-align:right">${it.est}h${it.manual?'':' <span style="color:var(--muted);font-size:11px">自動</span>'}</td>
+      <td>${fmtDate(it.task.deadline)}</td>
+      <td>${fmtMD(it.target)}</td>
+      <td>${fmtMD(it.finish)}</td>
+      <td>${it.late ? '<span class="badge badge-todo">⚠️ 間に合わない</span>' : '<span class="badge badge-done">OK</span>'}</td>
+    </tr>`).join('') : '<tr><td colspan="7"><div class="empty"><div class="eic">🗓️</div><p>締切が設定された未納品タスクがありません</p></div></td></tr>'}</tbody>`;
+}
+
 // ===================== CLOUD SYNC (Firebase) =====================
 const firebaseConfig = {
   apiKey: "AIzaSyDSWKbwcWrDK8VEU96xh77x_nSB_w6ZDjs",
@@ -1201,6 +1373,7 @@ function rerenderCurrentView() {
   if (currentView === 'summary')  renderSummary();
   if (currentView === 'revenue')  renderRevenue();
   if (currentView === 'outsource') renderOutsource();
+  if (currentView === 'schedule') renderSchedule();
 }
 
 function startSync() {
