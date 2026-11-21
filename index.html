@@ -327,22 +327,40 @@ tr:hover td { background: #f8fafc; }
 .month-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .month-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
 
-/* ── SCHEDULE ── */
-.sched-nav { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
-.sched-nav .sched-label { font-weight:700; font-size:15px; margin:0 6px; }
-.sched-week { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:18px; }
-.sched-day { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:10px; min-height:120px; }
-.sched-day.today { border:2px solid var(--accent); }
-.sched-day h4 { font-size:13px; margin-bottom:8px; display:flex; justify-content:space-between; }
-.sched-day h4 span { color:var(--muted); font-weight:500; }
-.sched-block { border-left:4px solid var(--accent); background:#f0f7ff; border-radius:8px; padding:7px 9px; margin-bottom:7px; cursor:pointer; }
-.sched-block.late { border-left-color:#ef4444; background:#fef2f2; }
-.sched-block .sb-time { font-size:11px; color:var(--muted); font-weight:700; }
-.sched-block .sb-name { font-size:13px; font-weight:600; line-height:1.35; margin:2px 0; word-break:break-all; }
-.sched-block .sb-meta { font-size:11px; color:var(--muted); }
-.sched-empty { font-size:12px; color:var(--muted); text-align:center; padding:14px 0; }
-.sched-note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:9px 12px; font-size:12px; margin-bottom:12px; color:#854d0e; }
-@media (max-width:768px) { .sched-week { grid-template-columns:1fr; } }
+/* ── PLANNER ── */
+.pl-nav { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.pl-nav .pl-label { font-weight:700; font-size:15px; margin:0 6px; }
+.pl-week { display:grid; grid-template-columns:repeat(7,minmax(150px,1fr)); gap:10px; margin-bottom:20px; overflow-x:auto; padding-bottom:6px; }
+.pl-day, .pl-backlog { background:var(--white); border:2px solid var(--border); border-radius:12px; padding:10px; display:flex; flex-direction:column; transition:background .12s, border-color .12s; }
+.pl-day { min-height:200px; }
+.pl-day.today { border-color:var(--accent); box-shadow:0 0 0 3px rgba(41,128,185,.12); }
+.pl-day.drop-hover, .pl-backlog.drop-hover { background:#f0f9ff; border-color:var(--accent); }
+.pl-day h4, .pl-backlog h4 { font-size:14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.pl-day h4 span, .pl-backlog h4 span { font-size:11px; color:var(--muted); font-weight:600; }
+.pl-day.sat h4 { color:#2563eb; }
+.pl-day.sun h4 { color:#dc2626; }
+.pl-list { display:flex; flex-direction:column; gap:6px; flex:1; min-height:36px; }
+.pl-backlog .pl-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); align-content:start; }
+.pl-item { display:flex; align-items:flex-start; gap:7px; padding:7px 8px; border:1px solid var(--border); border-radius:8px; background:#fafbfc; cursor:grab; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.pl-item.done .pl-text { text-decoration:line-through; color:var(--muted); }
+.pl-item.dragging-src { opacity:.3; }
+.pl-grip { display:none; color:var(--muted); font-size:15px; line-height:1.2; letter-spacing:-3px; padding:2px 4px 2px 0; touch-action:none; cursor:grab; }
+@media (pointer:coarse) { .pl-grip { display:block; } .pl-item { cursor:default; } }
+.pl-check { width:18px; height:18px; border:2px solid #94a3b8; border-radius:50%; flex-shrink:0; margin-top:1px; cursor:pointer; background:#fff; padding:0; color:#fff; font-size:11px; line-height:1; font-family:inherit; }
+.pl-item.done .pl-check { background:#22c55e; border-color:#22c55e; }
+.pl-text { flex:1; min-width:0; font-size:13px; line-height:1.4; overflow-wrap:anywhere; cursor:text; }
+.pl-edit { flex:1; min-width:0; font-size:13px; font-family:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:5px; -webkit-user-select:text; user-select:text; }
+.pl-del { border:none; background:none; color:var(--muted); cursor:pointer; font-size:13px; padding:0 2px; opacity:.6; font-family:inherit; }
+.pl-del:hover { opacity:1; color:#ef4444; }
+.pl-add { width:100%; border:1px dashed var(--border); border-radius:8px; padding:7px 9px; font-size:13px; font-family:inherit; margin-top:8px; background:transparent; color:var(--text); }
+.pl-add:focus { outline:none; border-color:var(--accent); background:#fff; }
+.pl-ghost { position:fixed; z-index:1000; pointer-events:none; opacity:.92; box-shadow:0 8px 24px rgba(0,0,0,.25); background:#fff; transform:rotate(-2deg); }
+body.pl-dragging { -webkit-user-select:none; user-select:none; cursor:grabbing; }
+body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display:none !important; }
+@media (max-width:768px) {
+  .pl-week { display:flex; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:8px; }
+  .pl-day { flex:0 0 230px; }
+}
 
 /* ── LOGIN ── */
 #login-overlay {
@@ -397,7 +415,7 @@ tr:hover td { background: #f8fafc; }
     <a data-view="summary"  onclick="switchView('summary');closeDrawer()"><span class="ic">📊</span>取引先サマリー</a>
     <a data-view="revenue"  onclick="switchView('revenue');closeDrawer()"><span class="ic">💰</span>月次収入</a>
     <a data-view="outsource" onclick="switchView('outsource');closeDrawer()"><span class="ic">👥</span>外注費集計</a>
-    <a data-view="schedule" onclick="switchView('schedule');closeDrawer()"><span class="ic">🗓️</span>週間スケジュール</a>
+    <a data-view="planner" onclick="switchView('planner');closeDrawer()"><span class="ic">🗓️</span>週間プランナー</a>
     <div class="sec">データ管理</div>
     <a onclick="exportData();closeDrawer()"><span class="ic">💾</span>バックアップ保存</a>
     <a onclick="document.getElementById('import-input').click();closeDrawer()"><span class="ic">📂</span>バックアップ読込</a>
@@ -503,18 +521,16 @@ tr:hover td { background: #f8fafc; }
       <div class="summary-grid" id="outsource-cards"></div>
     </div>
 
-    <!-- Schedule View -->
-    <div id="view-schedule" class="hidden">
-      <div class="sched-nav">
-        <button class="btn btn-sm" onclick="shiftScheduleWeek(-1)">◀ 前の週</button>
-        <button class="btn btn-sm" onclick="shiftScheduleWeek(0)">今週</button>
-        <button class="btn btn-sm" onclick="shiftScheduleWeek(1)">次の週 ▶</button>
-        <span class="sched-label" id="sched-label"></span>
+    <!-- Planner View -->
+    <div id="view-planner" class="hidden">
+      <div class="pl-nav">
+        <button class="btn btn-sm" onclick="shiftPlannerWeek(-1)">◀ 前の週</button>
+        <button class="btn btn-sm" onclick="shiftPlannerWeek(0)">今週</button>
+        <button class="btn btn-sm" onclick="shiftPlannerWeek(1)">次の週 ▶</button>
+        <span class="pl-label" id="pl-label"></span>
       </div>
-      <div class="stats" id="sched-stats"></div>
-      <div id="sched-notes"></div>
-      <div class="sched-week" id="sched-week"></div>
-      <div class="table-wrap"><div class="scroll-x"><table id="sched-table"></table></div></div>
+      <div class="pl-week" id="pl-week"></div>
+      <div id="pl-backlog-wrap"></div>
     </div>
 
   </div>
@@ -538,8 +554,8 @@ tr:hover td { background: #f8fafc; }
     <button class="tab" data-view="outsource" onclick="switchView('outsource')">
       <span class="ic">👥</span><span>外注費</span>
     </button>
-    <button class="tab" data-view="schedule" onclick="switchView('schedule')">
-      <span class="ic">🗓️</span><span>予定</span>
+    <button class="tab" data-view="planner" onclick="switchView('planner')">
+      <span class="ic">🗓️</span><span>プランナー</span>
     </button>
   </div>
 </nav>
@@ -624,10 +640,6 @@ tr:hover td { background: #f8fafc; }
           <label>備考</label>
           <input type="text" id="f-memo" placeholder="メモ">
         </div>
-      </div>
-      <div class="form-group">
-        <label>自分の作業時間の見込み（h）</label>
-        <input type="number" id="f-est" min="0" step="0.5" inputmode="decimal" placeholder="空欄＝自動見積り（週間スケジュール用）">
       </div>
     </div>
     <div class="modal-footer">
@@ -768,13 +780,14 @@ function switchView(view) {
     el.classList.toggle('active', el.dataset.view === view));
   document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
   document.getElementById('view-' + view).classList.remove('hidden');
-  const titles = {tasks:'タスク一覧', summary:'取引先サマリー', revenue:'月次収入', outsource:'外注費集計', schedule:'週間スケジュール'};
+  const titles = {tasks:'タスク一覧', summary:'取引先サマリー', revenue:'月次収入', outsource:'外注費集計', planner:'週間プランナー'};
   document.getElementById('page-title').textContent = titles[view];
   if (view === 'tasks') renderTasks();
   if (view === 'summary') renderSummary();
   if (view === 'revenue') renderRevenue();
   if (view === 'outsource') renderOutsource();
-  if (view === 'schedule') renderSchedule();
+  document.body.classList.toggle('view-planner', view === 'planner');
+  if (view === 'planner') renderPlanner();
 }
 
 function filterByClient(client) {
@@ -1078,7 +1091,7 @@ function onDeadlineChange() {
 function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'タスク追加';
-  ['f-name','f-deadline','f-price','f-memo','f-est'].forEach(id=>document.getElementById(id).value='');
+  ['f-name','f-deadline','f-price','f-memo'].forEach(id=>document.getElementById(id).value='');
   ['f-client','f-outsource','f-progress'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-delivery-month').value = taskMonth; // 選択中の月をデフォルトに
   document.getElementById('f-zone').value = 'formal';
@@ -1099,7 +1112,6 @@ function openEditModal(id) {
   document.getElementById('f-price').value          = t.price||'';
   document.getElementById('f-memo').value           = t.memo||'';
   document.getElementById('f-zone').value           = t.zone||'formal';
-  document.getElementById('f-est').value            = t.estHours||'';
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
@@ -1123,7 +1135,6 @@ function saveTask() {
     price:         priceVal !== '' ? Number(priceVal) : '',
     memo:          document.getElementById('f-memo').value.trim(),
     zone:          document.getElementById('f-zone').value,
-    estHours:      Number(document.getElementById('f-est').value) > 0 ? Number(document.getElementById('f-est').value) : '',
   };
   if (editingId !== null) {
     const i = tasks.findIndex(t=>t.id===editingId);
@@ -1154,7 +1165,7 @@ function exportData() {
   const now = new Date();
   const ts = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) +
              '_' + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
-  const payload = JSON.stringify({version: DATA_VERSION, tasks}, null, 2);
+  const payload = JSON.stringify({version: DATA_VERSION, tasks, planner: plannerItems}, null, 2);
   const blob = new Blob([payload], {type: 'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1178,6 +1189,10 @@ function importData(e) {
       }));
       nextId = Math.max(...tasks.map(t => t.id), 0) + 1;
       saveTasks(tasks);
+      if (!Array.isArray(obj) && Array.isArray(obj.planner)) {   // プランナーが入っているバックアップのみ復元（無ければ現状維持）
+        plannerItems = obj.planner.filter(x => x && x.id && typeof x.text === 'string');
+        savePlanner();
+      }
       renderTasks();
       showToast(`✅ ${tasks.length}件のタスクを読み込みました`);
     } catch(err) {
@@ -1189,135 +1204,229 @@ function importData(e) {
 }
 
 
-// ===================== SCHEDULE（週間スケジュール自動作成）=====================
-const WORK_START = 9, WORK_END = 17;   // 平日 9:00〜17:00
-const BUFFER_DAYS = 2;                 // 締切の2日前に作業完了
-let scheduleWeekOffset = 0;
-
+// ===================== PLANNER（週間プランナー）=====================
 function ymd(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function parseYMD(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
-function isWeekend(d) { const w = d.getDay(); return w===0 || w===6; }
-function nextWorkday(d) {
-  const n = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1);
-  while (isWeekend(n)) n.setDate(n.getDate()+1);
-  return n;
-}
-function fmtHour(h) { const hh = Math.floor(h), mm = Math.round((h-hh)*60); return hh+':'+String(mm).padStart(2,'0'); }
 function fmtMD(d) { return (d.getMonth()+1)+'/'+d.getDate(); }
-function roundHalf(h) { return Math.max(0.5, Math.round(h*2)/2); }
 
-// 自分の作業時間の自動見積り（手動入力があればそれを優先）
-function estimateHours(t) {
-  const manual = Number(t.estHours);
-  if (manual > 0) return {h: manual, manual: true};
-  if (t.outsource) return {h: 0.5, manual: false};   // 外注 → 自分は確認・修正対応のみ
-  const p = Number(t.price) || 0;
-  let base;
-  if (/撮影/.test(t.name)) base = 4;
-  else if (/ディレクション/.test(t.name)) base = 2;
-  else if (!p) base = 2;
-  else if (p <= 3000) base = 1.5;
-  else if (p <= 5000) base = 2;
-  else if (p <= 8000) base = 3;
-  else if (p <= 15000) base = 4;
-  else base = 6;
-  if (t.progress === '2_確認中') base = 0.5;          // 修正対応のみ
-  else if (t.progress === '4_編集中') base *= 0.6;    // 残り分
-  return {h: roundHalf(base), manual: false};
+function loadPlanner() {
+  try { const a = JSON.parse(localStorage.getItem('pm_planner') || '[]'); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+// 1件: {id, text, done, day: 'YYYY-MM-DD' | null(=下の「Task」)}。配列の並び順がそのまま各ボックス内の並び順
+let plannerItems = loadPlanner();
+let plannerWeekOffset = 0;
+let plDrag = null, plSuppressClick = false;
+
+function plNewId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function savePlanner() {
+  localStorage.setItem('pm_planner', JSON.stringify(plannerItems));
+  savePlannerToCloud();
+}
+function shiftPlannerWeek(n) { plannerWeekOffset = n === 0 ? 0 : plannerWeekOffset + n; renderPlanner(); }
+
+// ドラッグ中・入力中は、クラウド同期による再描画を見送る
+function plBusy() {
+  if (plDrag && plDrag.active) return true;
+  const a = document.activeElement;
+  return !!(a && (a.classList.contains('pl-edit') || (a.classList.contains('pl-add') && a.value)));
 }
 
-// 目標日が早い順に、平日9:00〜17:00へ詰めていく
-function buildSchedule() {
-  const now = new Date();
-  const items = tasks
-    .filter(t => t.zone==='formal' && t.progress!=='1_納品済み' && t.deadline)
-    .map(t => {
-      const dl = parseYMD(t.deadline);
-      const target = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate()-BUFFER_DAYS);
-      while (isWeekend(target)) target.setDate(target.getDate()-1);   // 土日なら金曜へ前倒し
-      const est = estimateHours(t);
-      return {task: t, est: est.h, manual: est.manual, target};
-    })
-    .sort((a,b) => a.target-b.target || parseYMD(a.task.deadline)-parseYMD(b.task.deadline) || a.task.id-b.task.id);
-
-  let day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let cur = Math.ceil((now.getHours() + now.getMinutes()/60) * 2) / 2;
-  if (isWeekend(day) || cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
-  else if (cur < WORK_START) cur = WORK_START;
-
-  const blocks = [];
-  items.forEach(it => {
-    let rest = it.est;
-    while (rest > 1e-9) {
-      if (cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
-      const take = Math.min(rest, WORK_END - cur);
-      blocks.push({id: it.task.id, date: ymd(day), start: cur, end: cur+take});
-      cur += take; rest -= take;
-    }
-    it.finish = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-    it.late = it.finish > it.target;
-  });
-  return {items, blocks};
+function plItemHTML(x) {
+  return `<div class="pl-item${x.done?' done':''}" data-id="${esc(x.id)}">
+    <span class="pl-grip" aria-hidden="true">⋮⋮</span>
+    <button class="pl-check" data-act="toggle" aria-label="完了">${x.done?'✓':''}</button>
+    <span class="pl-text" data-act="edit">${esc(x.text)}</span>
+    <button class="pl-del" data-act="del" aria-label="削除">✕</button>
+  </div>`;
 }
 
-function shiftScheduleWeek(n) {
-  scheduleWeekOffset = n === 0 ? 0 : scheduleWeekOffset + n;
-  renderSchedule();
-}
-
-function renderSchedule() {
-  const {items, blocks} = buildSchedule();
-  const byId = {}; items.forEach(it => byId[it.task.id] = it);
+function renderPlanner() {
   const today = new Date();
-  const mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay()+6)%7) + scheduleWeekOffset*7);
-  const days = [0,1,2,3,4].map(i => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate()+i));
-  const wd = ['月','火','水','木','金'];
-  document.getElementById('sched-label').textContent = fmtMD(days[0]) + ' 〜 ' + fmtMD(days[4]);
-
-  const weekBlocks = blocks.filter(b => days.some(d => ymd(d) === b.date));
-  const weekHours = weekBlocks.reduce((s,b) => s + (b.end-b.start), 0);
-  const lateCount = items.filter(it => it.late).length;
-  const lastFinish = items.length ? items.reduce((m,it) => it.finish > m ? it.finish : m, items[0].finish) : null;
-  document.getElementById('sched-stats').innerHTML = `
-    <div class="stat-card"><div class="lbl">この週の作業時間</div><div class="val">${weekHours}h</div></div>
-    <div class="stat-card"><div class="lbl">対象タスク（未納品・締切あり）</div><div class="val">${items.length}</div></div>
-    <div class="stat-card ${lateCount?'orange':'green'}"><div class="lbl">間に合わない</div><div class="val">${lateCount}</div></div>
-    <div class="stat-card blue"><div class="lbl">全タスク完了予定</div><div class="val" style="font-size:16px">${lastFinish ? fmtMD(lastFinish) : '—'}</div></div>`;
-
-  const noDl = tasks.filter(t => t.zone==='formal' && t.progress!=='1_納品済み' && !t.deadline).length;
-  document.getElementById('sched-notes').innerHTML =
-    `<div class="sched-note">締切の${BUFFER_DAYS}日前（土日は金曜）に終わるよう、平日${WORK_START}:00〜${WORK_END}:00へ目標日が早い順に自動で詰めています。作業時間は自動見積り（外注タスクは確認のみ0.5h）。タスクの編集で「作業時間の見込み」を入れると、そちらが優先されます。` +
-    (noDl ? `<br>⚠️ 締切が未設定のタスク ${noDl} 件は含まれていません。` : '') + `</div>`;
-
+  const mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay()+6)%7) + plannerWeekOffset*7);
+  const days = Array.from({length: 7}, (_, i) => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate()+i));
+  const wd = ['月','火','水','木','金','土','日'];
   const todayStr = ymd(today);
-  document.getElementById('sched-week').innerHTML = days.map((d,i) => {
-    const bs = weekBlocks.filter(b => b.date === ymd(d)).sort((a,b) => a.start-b.start);
-    const hrs = bs.reduce((s,b) => s + (b.end-b.start), 0);
-    return `<div class="sched-day${ymd(d)===todayStr?' today':''}">
-      <h4>${wd[i]} ${fmtMD(d)}<span>${hrs}h</span></h4>
-      ${bs.length ? bs.map(b => {
-        const it = byId[b.id];
-        return `<div class="sched-block${it.late?' late':''}" onclick="openEditModal(${b.id})">
-          <div class="sb-time">${fmtHour(b.start)}–${fmtHour(b.end)}（${b.end-b.start}h）</div>
-          <div class="sb-name">${esc(it.task.name)}</div>
-          <div class="sb-meta">${esc(it.task.client||'')}　目標 ${fmtMD(it.target)}${it.late?' ⚠️遅れ':''}</div>
-        </div>`;
-      }).join('') : '<div class="sched-empty">予定なし</div>'}
+  document.getElementById('pl-label').textContent = fmtMD(days[0]) + ' 〜 ' + fmtMD(days[6]);
+
+  document.getElementById('pl-week').innerHTML = days.map((d, i) => {
+    const key = ymd(d);
+    const its = plannerItems.filter(x => x.day === key);
+    const done = its.filter(x => x.done).length;
+    return `<div class="pl-day${key===todayStr?' today':''}${i===5?' sat':''}${i===6?' sun':''}" data-drop="${key}">
+      <h4>${fmtMD(d)}（${wd[i]}）<span>${its.length ? done+'/'+its.length : ''}</span></h4>
+      <div class="pl-list" data-list="${key}">${its.map(plItemHTML).join('')}</div>
+      <input class="pl-add" data-add="${key}" placeholder="＋ 追加" enterkeyhint="done" onkeydown="plAddKey(event,'${key}')">
     </div>`;
   }).join('');
 
-  document.getElementById('sched-table').innerHTML = `
-    <thead><tr><th>タスク</th><th>取引先</th><th style="text-align:right">作業時間</th><th>納期</th><th>目標（2日前）</th><th>完了予定</th><th>状態</th></tr></thead>
-    <tbody>${items.length ? items.map(it => `<tr onclick="openEditModal(${it.task.id})" style="cursor:pointer">
-      <td style="font-weight:600;white-space:normal;max-width:260px">${esc(it.task.name)}</td>
-      <td>${esc(it.task.client||'—')}</td>
-      <td style="text-align:right">${it.est}h${it.manual?'':' <span style="color:var(--muted);font-size:11px">自動</span>'}</td>
-      <td>${fmtDate(it.task.deadline)}</td>
-      <td>${fmtMD(it.target)}</td>
-      <td>${fmtMD(it.finish)}</td>
-      <td>${it.late ? '<span class="badge badge-todo">⚠️ 間に合わない</span>' : '<span class="badge badge-done">OK</span>'}</td>
-    </tr>`).join('') : '<tr><td colspan="7"><div class="empty"><div class="eic">🗓️</div><p>締切が設定された未納品タスクがありません</p></div></td></tr>'}</tbody>`;
+  const bl = plannerItems.filter(x => !x.day);
+  document.getElementById('pl-backlog-wrap').innerHTML = `<div class="pl-backlog" data-drop="backlog">
+    <h4>Task<span>自宅業務以外の「やりたいこと」。日付のボックスへドラッグして予定に入れる</span></h4>
+    <div class="pl-list" data-list="backlog">${bl.map(plItemHTML).join('')}</div>
+    <input class="pl-add" data-add="backlog" placeholder="＋ やりたいことを追加" enterkeyhint="done" onkeydown="plAddKey(event,'backlog')">
+  </div>`;
 }
+
+function plAddKey(e, key) {
+  if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;   // 日本語変換中のEnterは無視
+  const v = e.target.value.trim();
+  if (!v) return;
+  plannerItems.push({id: plNewId(), text: v, done: false, day: key === 'backlog' ? null : key});
+  savePlanner();
+  renderPlanner();
+  const inp = document.querySelector(`[data-add="${key}"]`);
+  if (inp) inp.focus();                                                    // 続けて入力できるように
+}
+
+function plStartEdit(span, id) {
+  const inp = document.createElement('input');
+  inp.className = 'pl-edit';
+  inp.value = (plannerItems.find(i => i.id === id) || {}).text || '';
+  span.replaceWith(inp);
+  inp.focus(); inp.select();
+  inp.addEventListener('keydown', e => {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter') inp.blur();
+    if (e.key === 'Escape') { inp.dataset.cancel = '1'; inp.blur(); }
+  });
+  inp.addEventListener('blur', () => {
+    const x = plannerItems.find(i => i.id === id);
+    const v = inp.value.trim();
+    if (!inp.dataset.cancel && x && v && v !== x.text) { x.text = v; savePlanner(); }
+    renderPlanner();
+  });
+}
+
+function plClick(e) {
+  if (plSuppressClick) return;                      // ドラッグ直後のクリックは無視
+  const b = e.target.closest('[data-act]');
+  const item = b && b.closest('.pl-item');
+  if (!item) return;
+  const id = item.dataset.id;
+  const x = plannerItems.find(i => i.id === id);
+  if (!x) return;
+  if (b.dataset.act === 'toggle') { x.done = !x.done; savePlanner(); renderPlanner(); }
+  else if (b.dataset.act === 'edit') plStartEdit(b, id);
+  else if (b.dataset.act === 'del') {
+    if (!confirm(`「${x.text}」を削除しますか？`)) return;
+    plannerItems = plannerItems.filter(i => i.id !== id);
+    savePlanner(); renderPlanner(); showToast('削除しました');
+  }
+}
+
+// ── ドラッグ&ドロップ（マウス・ペンは項目全体、指はグリップ「⋮⋮」で。HTML5 DnDはスマホで動かないため自前実装）──
+function plPointerDown(e) {
+  const item = e.target.closest('.pl-item');
+  if (!item || e.target.closest('[data-act="toggle"],[data-act="del"],.pl-edit')) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (e.pointerType === 'touch' && !e.target.closest('.pl-grip')) return;   // 指で項目本体を触った時はスクロール優先
+  plDrag = {id: item.dataset.id, el: item, x: e.clientX, y: e.clientY, cur: {x: e.clientX, y: e.clientY}, active: false, zone: null, ghost: null, raf: 0};
+}
+
+function plBeginDrag() {
+  const d = plDrag, r = d.el.getBoundingClientRect();
+  const g = d.el.cloneNode(true);
+  g.classList.add('pl-ghost');
+  g.style.width = r.width + 'px'; g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
+  document.body.appendChild(g);
+  d.ghost = g; d.offX = d.x - r.left; d.offY = d.y - r.top; d.active = true;
+  d.el.classList.add('dragging-src');
+  document.body.classList.add('pl-dragging');
+  plAutoScroll();
+}
+
+function plUpdateZone() {
+  const {x, y} = plDrag.cur;
+  const el = document.elementFromPoint(x, y);
+  const zone = el ? el.closest('[data-drop]') : null;
+  if (zone !== plDrag.zone) {
+    document.querySelectorAll('.drop-hover').forEach(n => n.classList.remove('drop-hover'));
+    if (zone) zone.classList.add('drop-hover');
+    plDrag.zone = zone;
+  }
+}
+
+function plAutoScroll() {                           // 端に近づいたら自動スクロール（週を横スクロール／画面を縦スクロール）
+  if (!plDrag || !plDrag.active) return;
+  const {x, y} = plDrag.cur;
+  const w = document.getElementById('pl-week'), r = w.getBoundingClientRect();
+  if (y > r.top - 20 && y < r.bottom + 20) {
+    if (x < r.left + 50) w.scrollLeft -= 12; else if (x > r.right - 50) w.scrollLeft += 12;
+  }
+  if (y < 70) window.scrollBy(0, -12); else if (y > window.innerHeight - 70) window.scrollBy(0, 12);
+  plUpdateZone();
+  plDrag.raf = requestAnimationFrame(plAutoScroll);
+}
+
+function plPointerMove(e) {
+  if (!plDrag) return;
+  plDrag.cur = {x: e.clientX, y: e.clientY};
+  if (!plDrag.active) {
+    if (Math.hypot(e.clientX - plDrag.x, e.clientY - plDrag.y) < 5) return;
+    plBeginDrag();
+  }
+  plDrag.ghost.style.left = (e.clientX - plDrag.offX) + 'px';
+  plDrag.ghost.style.top  = (e.clientY - plDrag.offY) + 'px';
+  plUpdateZone();
+}
+
+// ドロップ位置：ポインタに一番近い項目の前／後ろ
+function plFindBefore(list, dragId, x, y) {
+  const els = [...list.querySelectorAll('.pl-item')].filter(n => n.dataset.id !== dragId);
+  if (list.dataset.list !== 'backlog') {
+    const t = els.find(n => { const r = n.getBoundingClientRect(); return y < r.top + r.height/2; });
+    return t ? t.dataset.id : null;
+  }
+  let best = null, bd = Infinity, bc = null;      // 「Task」は複数列のグリッドなので距離で判定
+  els.forEach(n => {
+    const r = n.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
+    const dist = Math.hypot(x - cx, y - cy);
+    if (dist < bd) { bd = dist; best = n; bc = {cx, cy, h: r.height}; }
+  });
+  if (!best) return null;
+  const before = Math.abs(y - bc.cy) < bc.h/2 ? x < bc.cx : y < bc.cy;
+  if (before) return best.dataset.id;
+  const nxt = els[els.indexOf(best) + 1];
+  return nxt ? nxt.dataset.id : null;
+}
+
+function plMove(id, key, beforeId) {
+  const idx = plannerItems.findIndex(i => i.id === id);
+  if (idx < 0) return;
+  const [it] = plannerItems.splice(idx, 1);
+  it.day = key === 'backlog' ? null : key;
+  const bi = beforeId ? plannerItems.findIndex(i => i.id === beforeId) : -1;
+  if (bi >= 0) plannerItems.splice(bi, 0, it); else plannerItems.push(it);
+  savePlanner();
+  renderPlanner();
+}
+
+function plPointerEnd(e) {
+  if (!plDrag) return;
+  const d = plDrag; plDrag = null;
+  cancelAnimationFrame(d.raf);
+  if (!d.active) return;
+  d.ghost.remove();
+  d.el.classList.remove('dragging-src');
+  document.body.classList.remove('pl-dragging');
+  document.querySelectorAll('.drop-hover').forEach(n => n.classList.remove('drop-hover'));
+  plSuppressClick = true; setTimeout(() => plSuppressClick = false, 60);
+  if (e.type === 'pointercancel' || !d.zone) return;                     // 枠の外で離したら元のまま
+  d.cur = {x: e.clientX, y: e.clientY};
+  const list = d.zone.querySelector('.pl-list');
+  plMove(d.id, d.zone.dataset.drop, plFindBefore(list, d.id, d.cur.x, d.cur.y));
+}
+
+(function plInit() {
+  const view = document.getElementById('view-planner');
+  view.addEventListener('pointerdown', plPointerDown);
+  view.addEventListener('click', plClick);
+  view.addEventListener('contextmenu', e => { if (e.target.closest('.pl-grip')) e.preventDefault(); });
+  document.addEventListener('pointermove', plPointerMove);
+  document.addEventListener('pointerup', plPointerEnd);
+  document.addEventListener('pointercancel', plPointerEnd);
+  document.addEventListener('touchmove', e => { if (plDrag && plDrag.active) e.preventDefault(); }, {passive: false});
+})();
 
 // ===================== CLOUD SYNC (Firebase) =====================
 const firebaseConfig = {
@@ -1363,7 +1472,14 @@ function userDoc() {
 
 function saveToCloud(t) {
   if (!currentUser) return;
-  userDoc().set({ version: DATA_VERSION, tasks: t, updatedAt: new Date().toISOString() })
+  userDoc().set({ version: DATA_VERSION, tasks: t, updatedAt: new Date().toISOString() }, { merge: true })
+    .then(() => setSyncStatus('☁️ 同期済み'))
+    .catch(() => { setSyncStatus('⚠️ 未同期'); showToast('⚠️ クラウド保存に失敗しました'); });
+}
+
+function savePlannerToCloud() {
+  if (!currentUser) return;
+  userDoc().set({ planner: plannerItems, plannerUpdatedAt: new Date().toISOString() }, { merge: true })
     .then(() => setSyncStatus('☁️ 同期済み'))
     .catch(() => { setSyncStatus('⚠️ 未同期'); showToast('⚠️ クラウド保存に失敗しました'); });
 }
@@ -1373,7 +1489,7 @@ function rerenderCurrentView() {
   if (currentView === 'summary')  renderSummary();
   if (currentView === 'revenue')  renderRevenue();
   if (currentView === 'outsource') renderOutsource();
-  if (currentView === 'schedule') renderSchedule();
+  if (currentView === 'planner' && !plBusy()) renderPlanner();
 }
 
 function startSync() {
@@ -1381,18 +1497,27 @@ function startSync() {
   userDoc().get().then(snap => {
     if (!snap.exists && tasks.length > 0) {
       // 初回ログイン：この端末のデータをクラウドへ移行
-      return userDoc().set({ version: DATA_VERSION, tasks, updatedAt: new Date().toISOString() });
+      return userDoc().set({ version: DATA_VERSION, tasks, planner: plannerItems, updatedAt: new Date().toISOString() });
+    }
+    if (snap.exists && !Array.isArray(snap.data().planner) && plannerItems.length > 0) {
+      // クラウドにプランナーがまだ無ければ、この端末のものを移行
+      return userDoc().set({ planner: plannerItems, plannerUpdatedAt: new Date().toISOString() }, { merge: true });
     }
   }).then(() => {
     unsubscribeSync = userDoc().onSnapshot(snap => {
       if (snap.metadata.hasPendingWrites) return; // 自分の書き込みはスキップ
-      if (snap.exists && Array.isArray(snap.data().tasks)) {
-        tasks  = snap.data().tasks;
+      const d = snap.exists ? snap.data() : null;
+      if (d && Array.isArray(d.tasks)) {
+        tasks  = d.tasks;
         nextId = Math.max(...tasks.map(t => t.id), 0) + 1;
         localStorage.setItem('pm_tasks', JSON.stringify(tasks));
         localStorage.setItem('pm_version', DATA_VERSION);
-        rerenderCurrentView();
       }
+      if (d && Array.isArray(d.planner) && JSON.stringify(d.planner) !== JSON.stringify(plannerItems)) {
+        plannerItems = d.planner;
+        localStorage.setItem('pm_planner', JSON.stringify(plannerItems));
+      }
+      rerenderCurrentView();
       setSyncStatus('☁️ 同期済み');
     }, () => setSyncStatus('⚠️ 未同期'));
   }).catch(() => setSyncStatus('⚠️ 未同期'));
