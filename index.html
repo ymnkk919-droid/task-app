@@ -369,6 +369,8 @@ tr:hover td { background: #f8fafc; }
 .pl-text { font-size:13px; line-height:1.4; overflow-wrap:anywhere; cursor:text; }
 .pl-meta { font-size:11px; color:var(--muted); margin-top:2px; line-height:1.35; }
 .pl-item.late { border-left:4px solid #ef4444; background:#fef2f2; }
+.pl-day.over { border-color:#fca5a5; background:#fffafa; }
+.pl-over { color:#dc2626; font-weight:700; font-size:12px; }
 .pl-help { font-size:12px; color:var(--muted); margin:-4px 0 12px; line-height:1.5; }
 .pl-edit { width:100%; min-width:0; font-size:13px; font-family:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:5px; -webkit-user-select:text; user-select:text; }
 .pl-del { border:none; background:none; color:var(--muted); cursor:pointer; font-size:13px; padding:0 2px; opacity:.6; font-family:inherit; }
@@ -549,9 +551,12 @@ body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display
         <button class="btn btn-sm" onclick="shiftPlannerWeek(0)">今週</button>
         <button class="btn btn-sm" data-weeknav="1" onclick="shiftPlannerWeek(1)">次の週 ▶</button>
         <span class="pl-label" id="pl-label"></span>
-        <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="plAutoGenerate()">🤖 仕事タスクを自動で組む</button>
+        <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="plAutoAdd()">＋ 新しいタスクだけ追加</button>
+          <button class="btn btn-sm btn-primary" onclick="plAutoGenerate()">🤖 全部を自動で割り振る</button>
+        </span>
       </div>
-      <div class="pl-help">締切の2日前（土日なら金曜）に自分の作業が終わるよう、平日9:00〜17:00へ自動で配置します。名前に「撮影」を含むタスクは、2日前ではなく締切当日に配置します。作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。配置後はドラッグで自由に調整できます（別の週へ動かすときは、ドラッグしたまま「前の週／次の週」ボタンの上で止めると週が切り替わります）。</div>
+      <div class="pl-help"><b>🤖 全部を自動で割り振る</b>：未納品で締切のある仕事タスクを、締切の2日前（土日なら金曜）に終わるよう<b>締切優先</b>で組み直します（撮影は締切当日）。間に合わせるために1日が8時間を超えてもよく、<b style="color:#dc2626">8時間を超えた日は赤</b>で表示します。<br><b>＋ 新しいタスクだけ追加</b>：まだ配置していない仕事タスクだけを、<b>今の配置は変えずに</b>空いている所へ足します。<br>作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。配置後はドラッグで自由に調整できます（別の週へは、ドラッグしたまま「前の週／次の週」ボタンの上で止めると切り替わります）。</div>
       <div class="pl-week" id="pl-week"></div>
       <div id="pl-backlog-wrap"></div>
     </div>
@@ -1280,7 +1285,7 @@ function plItemHTML(x) {
   let meta = '';
   if (x.auto) {                                      // 自動配置された仕事タスク
     const p = [];
-    if (x.start != null) p.push(fmtHour(x.start) + '–' + fmtHour(x.end));
+    if (x.start != null) p.push(x.start >= WORK_END ? '17時以降' : fmtHour(x.start) + '–' + fmtHour(Math.min(x.end, 24)));   // 残業分は時刻でなく「17時以降」
     p.push(x.hours + 'h');
     if (x.client) p.push(x.client);
     if (x.target) p.push(x.fixed ? '当日' : '目標 ' + fmtMD(parseYMD(x.target)) + (x.late ? ' ⚠️遅れ' : ''));
@@ -1306,8 +1311,10 @@ function renderPlanner() {
     const key = ymd(d);
     const its = plannerItems.filter(x => x.day === key);
     const done = its.filter(x => x.done).length;
-    return `<div class="pl-day${key===todayStr?' today':''}${i===5?' sat':''}${i===6?' sun':''}" data-drop="${key}">
-      <h4>${fmtMD(d)}（${wd[i]}）<span>${its.length ? done+'/'+its.length : ''}</span></h4>
+    const hrs = +its.reduce((sum, x) => sum + (x.auto ? (Number(x.hours) || 0) : 0), 0).toFixed(1);   // 自動配置した仕事の合計時間
+    const over = hrs > WORK_END - WORK_START;                                                          // 8時間超
+    return `<div class="pl-day${key===todayStr?' today':''}${i===5?' sat':''}${i===6?' sun':''}${over?' over':''}" data-drop="${key}">
+      <h4>${fmtMD(d)}（${wd[i]}）<span>${hrs ? `<b class="${over?'pl-over':''}">${hrs}h</b> ` : ''}${its.length ? done+'/'+its.length : ''}</span></h4>
       <div class="pl-list" data-list="${key}">${its.map(plItemHTML).join('')}</div>
       <input class="pl-add" data-add="${key}" placeholder="＋ 追加" enterkeyhint="done" onkeydown="plAddKey(event,'${key}')">
     </div>`;
@@ -1449,86 +1456,158 @@ function estimateHours(t) {
   return roundHalf(base);
 }
 
-function plAutoGenerate() {
-  const open = tasks.filter(t => t.zone === 'formal' && t.progress !== '1_納品済み');
-  const targets = open.filter(t => t.deadline);
-  const noDl = open.length - targets.length;
-  if (!targets.length) { alert('締切が設定された未納品タスクがありません。'); return; }
-  const now = new Date();
-  const todayStr = ymd(now);
-  const isOldAuto = x => x.auto && !x.done && x.day && x.day >= todayStr;
-  const oldN = plannerItems.filter(isOldAuto).length;
-  if (!confirm(`未納品で締切のある仕事タスク ${targets.length} 件を、締切の${BUFFER_DAYS}日前に終わるよう、平日${WORK_START}:00〜${WORK_END}:00へ自動で配置します。` +
-      (oldN ? `\n前回の自動配置（未完了の${oldN}件）は置き換えます。手動で追加した項目は変わりません。` : '') + '\nよろしいですか？')) return;
+// 9〜17時のうち、すでに埋まっている時間帯(ivs)を除いた「from以降の最初の空き」。無ければ null
+function plFreeSeg(ivs, from) {
+  let st = Math.max(from, WORK_START);
+  for (const [bs, be] of ivs.slice().sort((p, q) => p[0] - q[0])) {
+    if (st >= WORK_END) return null;
+    if (st >= be) continue;
+    if (st < bs) return [st, Math.min(bs, WORK_END)];
+    st = be;
+  }
+  return st < WORK_END ? [st, WORK_END] : null;
+}
 
-  const items = targets.map(t => {
+// entries: [{t, target, est, shoot}]。busy: 日付→埋まっている時間帯（既存の配置）。戻り値の made を足せば完成
+function plPlan(entries, busy, now) {
+  const todayStr = ymd(now);
+  const nowCur = Math.ceil((now.getHours() + now.getMinutes()/60) * 2) / 2;
+  const made = [], lateNames = [], flexible = [];
+  const get = k => busy[k] || (busy[k] = []);
+  const mk = (it, key, st, en, fixed, late) => ({id: plNewId(), text: it.t.name, done: false, day: key, auto: true, taskId: it.t.id,
+      hours: en - st, start: st, end: en, client: it.t.client || '', target: ymd(it.target), late: !!late, fixed: !!fixed});
+
+  // ① 撮影は締切当日に固定
+  entries.filter(it => it.shoot).sort((p, q) => p.target - q.target || p.t.id - q.t.id).forEach(it => {
+    const key = ymd(it.target);
+    if (key < todayStr) { flexible.push(it); return; }                  // 日付を過ぎた撮影 → 通常の枠へ（遅れ表示）
+    const seg = plFreeSeg(get(key), key === todayStr ? nowCur : WORK_START);
+    if (!seg && key === todayStr) { flexible.push(it); return; }
+    const st = seg ? seg[0] : Math.max(WORK_END, ...get(key).map(r => r[1]));
+    get(key).push([st, st + it.est]);
+    made.push(mk(it, key, st, st + it.est, true));
+  });
+
+  // ② それ以外は目標日が早い順に。まず通常枠(9〜17時)で詰め、締切に間に合わなければ締切優先で8時間超えも許可
+  flexible.push(...entries.filter(it => !it.shoot));
+  flexible.sort((p, q) => p.target - q.target || parseYMD(p.t.deadline) - parseYMD(q.t.deadline) || p.t.id - q.t.id);
+  let day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), cur0 = nowCur;
+  if (isWeekend(day0) || cur0 >= WORK_END) { day0 = nextWorkday(day0); cur0 = WORK_START; }
+  else if (cur0 < WORK_START) cur0 = WORK_START;
+  const startKey = ymd(day0);
+
+  flexible.forEach(it => {
+    const days = [];                                                    // 開始日〜目標日の平日
+    for (let d = new Date(day0); d <= it.target; d = nextWorkday(d)) days.push(new Date(d));
+    let chunks = [], tmp = {}, rest = it.est;
+    const ivs = k => (busy[k] || []).concat(tmp[k] || []);
+    const place = (key, st, en) => { chunks.push(mk(it, key, st, en, false, false)); (tmp[key] = tmp[key] || []).push([st, en]); };
+
+    // (a) 通常枠に、開始日から順に
+    let day = new Date(day0), cur = cur0;
+    for (let guard = 0; rest > 1e-9 && guard < 800; guard++) {
+      const key = ymd(day), seg = plFreeSeg(ivs(key), cur);
+      if (!seg) { day = nextWorkday(day); cur = WORK_START; continue; }
+      const take = Math.min(rest, seg[1] - seg[0]);
+      place(key, seg[0], seg[0] + take); cur = seg[0] + take; rest -= take;
+    }
+    const finish = parseYMD(chunks[chunks.length - 1].day);
+
+    if (finish > it.target && days.length) {
+      // (b) 締切優先：開始日〜目標日の平日に収める。通常枠が足りない分は、いちばん空いている日に上乗せ（8時間超えOK）
+      chunks = []; tmp = {}; rest = it.est;
+      days.forEach(d => {
+        const key = ymd(d); let c = key === startKey ? cur0 : WORK_START, seg;
+        while (rest > 1e-9 && (seg = plFreeSeg(ivs(key), c))) {
+          const take = Math.min(rest, seg[1] - seg[0]);
+          place(key, seg[0], seg[0] + take); c = seg[0] + take; rest -= take;
+        }
+      });
+      if (rest > 1e-9) {
+        const extra = {};
+        const load = k => ivs(k).reduce((sum, r) => sum + (r[1] - r[0]), 0) + (extra[k] || 0);
+        while (rest > 1e-9) {
+          const step = Math.min(0.5, rest);
+          let best = ymd(days[0]), bl = Infinity;
+          days.forEach(d => { const l = load(ymd(d)); if (l < bl) { bl = l; best = ymd(d); } });
+          extra[best] = (extra[best] || 0) + step; rest -= step;
+        }
+        Object.entries(extra).forEach(([key, h]) => {
+          const st = Math.max(WORK_END, ...ivs(key).map(r => r[1]));    // 17時以降に続けて置く
+          place(key, st, st + h);
+        });
+      }
+    } else if (finish > it.target) {                                    // 目標日がもう過ぎている → 間に合わない
+      chunks.forEach(c => c.late = true); lateNames.push(it.t.name);
+    }
+    Object.entries(tmp).forEach(([k, a]) => get(k).push(...a));
+    made.push(...chunks);
+  });
+  made.sort((p, q) => p.day < q.day ? -1 : p.day > q.day ? 1 : p.start - q.start);
+  return {made, lateNames};
+}
+
+function plAutoGenerate() { plAutoRun('all'); }   // 全部を組み直す
+function plAutoAdd()      { plAutoRun('add'); }   // まだ配置していないタスクだけ足す
+
+function plAutoRun(mode) {
+  const open = tasks.filter(t => t.zone === 'formal' && t.progress !== '1_納品済み');
+  const withDl = open.filter(t => t.deadline);
+  const noDl = open.length - withDl.length;
+  const now = new Date(), todayStr = ymd(now);
+  const isOldAuto = x => x.auto && !x.done && x.day && x.day >= todayStr;
+  let targets;
+
+  if (mode === 'all') {
+    if (!withDl.length) { alert('締切が設定された未納品タスクがありません。'); return; }
+    targets = withDl;
+    const oldN = plannerItems.filter(isOldAuto).length;
+    if (!confirm(`未納品で締切のある仕事タスク ${targets.length} 件を、締切の${BUFFER_DAYS}日前に終わるよう締切優先で自動配置します（1日8時間を超える日が出ることがあります）。` +
+        (oldN ? `\n前回の自動配置（未完了の${oldN}件）は置き換えます。手動で追加した項目は変わりません。` : '') + '\nよろしいですか？')) return;
+    plannerItems = plannerItems.filter(x => !isOldAuto(x));
+  } else {
+    const scheduled = new Set(plannerItems.filter(x => x.auto).map(x => x.taskId));
+    targets = withDl.filter(t => !scheduled.has(t.id));
+    if (!targets.length) {
+      alert('追加するタスクはありません。締切のある未納品タスクは、すべて配置済みです。' + (noDl ? `\n（締切が未設定の ${noDl} 件は対象外です）` : ''));
+      return;
+    }
+  }
+
+  // すでに入っている配置を「埋まっている時間」として引き継ぐ
+  const busy = {};
+  const keep = plannerItems.filter(x => x.auto && x.day && x.day >= todayStr);
+  keep.filter(x => x.start != null).forEach(x => (busy[x.day] = busy[x.day] || []).push([x.start, x.end]));
+  keep.filter(x => x.start == null && x.hours).forEach(x => {          // 時間帯の無いもの（別の日へ動かした分）は空きに仮置き
+    const iv = busy[x.day] = busy[x.day] || [], seg = plFreeSeg(iv, WORK_START);
+    const st = seg ? seg[0] : Math.max(WORK_END, ...iv.map(r => r[1]));
+    iv.push([st, st + x.hours]);
+  });
+
+  const entries = targets.map(t => {
     const dl = parseYMD(t.deadline);
     const shoot = /撮影/.test(t.name);                          // 撮影＝その日に現地へ行く → 締切当日に固定
     const target = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate() - (shoot ? 0 : BUFFER_DAYS));
     if (!shoot) while (isWeekend(target)) target.setDate(target.getDate() - 1);   // 土日なら金曜へ前倒し
     return {t, target, est: estimateHours(t), shoot};
   });
+  const {made, lateNames} = plPlan(entries, busy, now);
 
-  const nowCur = Math.ceil((now.getHours() + now.getMinutes()/60) * 2) / 2;
-  const busy = {};                                              // 'YYYY-MM-DD' → 埋まっている時間帯 [[開始,終了],...]
-  const freeSeg = (key, from) => {                              // from 以降で最初の空き時間帯（9〜17時の範囲）
-    let st = Math.max(from, WORK_START);
-    for (const [bs, be] of (busy[key] || []).slice().sort((p, q) => p[0] - q[0])) {
-      if (st >= be) continue;
-      if (st < bs) return [st, bs];
-      st = be;
-    }
-    return st < WORK_END ? [st, WORK_END] : null;
-  };
-  const mk = (it, key, st, en, fixed) => ({id: plNewId(), text: it.t.name, done: false, day: key, auto: true, taskId: it.t.id,
-      hours: en - st, start: st, end: en, client: it.t.client || '', target: ymd(it.target), late: false, fixed});
-  const made = [], lateNames = [], flexible = [];
-
-  // ① 撮影は締切当日に固定（同じ日に複数あれば順に）
-  items.filter(it => it.shoot).sort((p, q) => p.target - q.target || p.t.id - q.t.id).forEach(it => {
-    const key = ymd(it.target);
-    if (key < todayStr) { flexible.push(it); return; }           // 日付を過ぎた撮影 → 通常の枠へ（遅れ表示）
-    const seg = freeSeg(key, key === todayStr ? nowCur : WORK_START);
-    if (!seg && key === todayStr) { flexible.push(it); return; } // 今日で、もう終業時刻を過ぎている
-    const st = seg ? seg[0] : Math.max(WORK_END, ...(busy[key] || []).map(r => r[1]));
-    (busy[key] = busy[key] || []).push([st, st + it.est]);
-    made.push(mk(it, key, st, st + it.est, true));
-  });
-
-  // ② それ以外は目標日が早い順に、撮影の時間を避けて平日9〜17時へ
-  flexible.push(...items.filter(it => !it.shoot));
-  flexible.sort((p, q) => p.target - q.target || parseYMD(p.t.deadline) - parseYMD(q.t.deadline) || p.t.id - q.t.id);
-  let day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let cur = nowCur;
-  if (isWeekend(day) || cur >= WORK_END) { day = nextWorkday(day); cur = WORK_START; }
-  else if (cur < WORK_START) cur = WORK_START;
-  flexible.forEach(it => {
-    const chunks = [];
-    let rest = it.est;
-    while (rest > 1e-9) {
-      const key = ymd(day);
-      const seg = freeSeg(key, cur);
-      if (!seg) { day = nextWorkday(day); cur = WORK_START; continue; }
-      const take = Math.min(rest, seg[1] - seg[0]);
-      chunks.push(mk(it, key, seg[0], seg[0] + take, false));
-      (busy[key] = busy[key] || []).push([seg[0], seg[0] + take]);
-      cur = seg[0] + take; rest -= take;
-    }
-    if (parseYMD(chunks[chunks.length - 1].day) > it.target) { chunks.forEach(c => c.late = true); lateNames.push(it.t.name); }
-    made.push(...chunks);
-  });
-  made.sort((p, q) => p.day < q.day ? -1 : p.day > q.day ? 1 : p.start - q.start);
-
-  plannerItems = plannerItems.filter(x => !isOldAuto(x)).concat(made);
+  plannerItems = plannerItems.concat(made);
   savePlanner();
-  // 最初の配置がある週へ移動（今日が土日だと配置は来週から始まるため）
+  // 最初の配置がある週へ移動
   const monOf = d => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay()+6)%7));
   plannerWeekOffset = made.length ? Math.round((monOf(parseYMD(made[0].day)) - monOf(now)) / (7*86400000)) : 0;
   renderPlanner();
-  const hours = items.reduce((s, it) => s + it.est, 0);
-  alert(`${items.length}件（合計${hours}時間）を配置しました。` +
-        (lateNames.length ? `\n\n⚠️ 締切の${BUFFER_DAYS}日前までに間に合わないタスク（赤で表示）:\n・` + lateNames.join('\n・') : '') +
-        (noDl ? `\n\n締切が未設定の ${noDl} 件は配置していません。` : ''));
+
+  const load = {};
+  plannerItems.filter(x => x.auto && x.day && x.day >= todayStr).forEach(x => load[x.day] = (load[x.day] || 0) + (Number(x.hours) || 0));
+  const overDays = Object.entries(load).filter(([, h]) => h > WORK_END - WORK_START).sort();
+  const hours = entries.reduce((sum, it) => sum + it.est, 0);
+  alert(`${entries.length}件（合計${hours}時間）を${mode === 'all' ? '配置しました。' : '今の配置に追加しました。既存の配置は変えていません。'}` +
+        (overDays.length ? `\n\n🔴 1日${WORK_END - WORK_START}時間を超える日（赤で表示）:\n` + overDays.map(([d, h]) => `・${fmtMD(parseYMD(d))}  ${+h.toFixed(1)}時間`).join('\n') : '') +
+        (lateNames.length ? `\n\n⚠️ 締切の日付がすでに過ぎていて間に合わないタスク:\n・` + lateNames.join('\n・') : '') +
+        (mode === 'all' && noDl ? `\n\n締切が未設定の ${noDl} 件は配置していません。` : ''));
 }
 
 // ── ドラッグ&ドロップ（マウス・ペンは項目全体、指はグリップ「⋮⋮」で。HTML5 DnDはスマホで動かないため自前実装）──
