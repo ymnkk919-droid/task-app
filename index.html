@@ -329,6 +329,7 @@ tr:hover td { background: #f8fafc; }
 
 /* ── PLANNER ── */
 .pl-nav { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.pl-nav .btn.drop-hover { background:#dbeafe; border-color:var(--accent); color:var(--accent); }
 .pl-nav .pl-label { font-weight:700; font-size:15px; margin:0 6px; }
 .pl-week { display:grid; grid-template-columns:repeat(7,minmax(150px,1fr)); gap:10px; margin-bottom:20px; overflow-x:auto; padding-bottom:6px; }
 .pl-day, .pl-backlog { background:var(--white); border:2px solid var(--border); border-radius:12px; padding:10px; display:flex; flex-direction:column; transition:background .12s, border-color .12s; }
@@ -544,13 +545,13 @@ body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display
     <!-- Planner View -->
     <div id="view-planner" class="hidden">
       <div class="pl-nav">
-        <button class="btn btn-sm" onclick="shiftPlannerWeek(-1)">◀ 前の週</button>
+        <button class="btn btn-sm" data-weeknav="-1" onclick="shiftPlannerWeek(-1)">◀ 前の週</button>
         <button class="btn btn-sm" onclick="shiftPlannerWeek(0)">今週</button>
-        <button class="btn btn-sm" onclick="shiftPlannerWeek(1)">次の週 ▶</button>
+        <button class="btn btn-sm" data-weeknav="1" onclick="shiftPlannerWeek(1)">次の週 ▶</button>
         <span class="pl-label" id="pl-label"></span>
         <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="plAutoGenerate()">🤖 仕事タスクを自動で組む</button>
       </div>
-      <div class="pl-help">締切の2日前（土日なら金曜）に自分の作業が終わるよう、平日9:00〜17:00へ自動で配置します。名前に「撮影」を含むタスクは、2日前ではなく締切当日に配置します。作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。配置後はドラッグで自由に調整できます。</div>
+      <div class="pl-help">締切の2日前（土日なら金曜）に自分の作業が終わるよう、平日9:00〜17:00へ自動で配置します。名前に「撮影」を含むタスクは、2日前ではなく締切当日に配置します。作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。配置後はドラッグで自由に調整できます（別の週へ動かすときは、ドラッグしたまま「前の週／次の週」ボタンの上で止めると週が切り替わります）。</div>
       <div class="pl-week" id="pl-week"></div>
       <div id="pl-backlog-wrap"></div>
     </div>
@@ -1555,11 +1556,24 @@ function plUpdateZone() {
   const {x, y} = plDrag.cur;
   const el = document.elementFromPoint(x, y);
   const zone = el ? el.closest('[data-drop]') : null;
-  if (zone !== plDrag.zone) {
+  const nav = el ? el.closest('[data-weeknav]') : null;
+  if (zone !== plDrag.zone || nav !== plDrag.nav) {
     document.querySelectorAll('.drop-hover').forEach(n => n.classList.remove('drop-hover'));
     if (zone) zone.classList.add('drop-hover');
+    if (nav) nav.classList.add('drop-hover');
     plDrag.zone = zone;
+    if (nav !== plDrag.nav) { plDrag.nav = nav; clearTimeout(plDrag.navTimer); if (nav) plNavDwell(nav); }
   }
+}
+
+// 「前の週／次の週」の上で止めると週を切り替える（止め続ければ続けて切り替わる）
+function plNavDwell(nav) {
+  clearTimeout(plDrag.navTimer);
+  plDrag.navTimer = setTimeout(() => {
+    if (!plDrag || plDrag.nav !== nav) return;
+    shiftPlannerWeek(Number(nav.dataset.weeknav));
+    plNavDwell(nav);
+  }, 650);
 }
 
 function plAutoScroll() {                           // 端に近づいたら自動スクロール（週を横スクロール／画面を縦スクロール）
@@ -1609,7 +1623,7 @@ function plMove(id, key, beforeId) {
 function plPointerEnd(e) {
   if (!plDrag) return;
   const d = plDrag; plDrag = null;
-  cancelAnimationFrame(d.raf);
+  cancelAnimationFrame(d.raf); clearTimeout(d.navTimer);
   if (!d.active) return;
   d.ghost.remove();
   d.el.classList.remove('dragging-src');
