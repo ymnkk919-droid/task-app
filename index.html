@@ -370,6 +370,25 @@ tr:hover td { background: #f8fafc; }
 .pl-meta { font-size:11px; color:var(--muted); margin-top:2px; line-height:1.35; }
 .pl-item.late { border-left:4px solid #ef4444; background:#fef2f2; }
 .pl-day.over { border-color:#fca5a5; background:#fffafa; }
+.pl-day .pl-list { flex:0 0 auto; }
+.pl-grid { position:relative; margin-top:10px; border-top:1px solid var(--border); background:#fff; -webkit-user-select:none; user-select:none; }
+.pl-work { position:absolute; left:0; right:0; background:#f4f9ff; pointer-events:none; }
+.pl-hline { position:absolute; left:0; right:0; height:0; border-top:1px dashed #e3e9f0; pointer-events:none; }
+.pl-hline span { position:absolute; left:2px; top:1px; font-size:9px; color:#a3afbf; }
+.pl-item.tl { position:absolute; box-sizing:border-box; overflow:hidden; padding:2px 3px 8px 3px; gap:3px; border:1px solid #bcd7f5; border-left:4px solid var(--accent); background:#eaf3fd; border-radius:6px; cursor:grab; z-index:1; }
+.pl-item.tl.manual { background:#e9f9f0; border-color:#bfe8d1; border-left-color:#22c55e; }
+.pl-item.tl.late { background:#fef2f2; border-color:#fecaca; border-left-color:#ef4444; }
+.pl-item.tl.done { opacity:.6; }
+.pl-item.tl .pl-text { font-size:11px; line-height:1.25; }
+.pl-item.tl .pl-meta { font-size:10px; margin-top:0; }
+.pl-item.tl .pl-check { width:14px; height:14px; margin-top:0; font-size:9px; border-width:1.5px; }
+.pl-item.tl .pl-grip { font-size:11px; padding:0; }
+.pl-item.tl .pl-del { font-size:10px; padding:0; }
+.tl-resize { position:absolute; left:0; right:0; bottom:0; height:8px; cursor:ns-resize; touch-action:none; }
+.tl-resize::after { content:''; position:absolute; left:50%; bottom:2px; width:18px; height:3px; margin-left:-9px; border-radius:2px; background:rgba(0,0,0,.2); }
+.pl-ind { position:absolute; left:0; right:0; background:rgba(41,128,185,.18); border:2px dashed var(--accent); border-radius:6px; font-size:10px; color:var(--accent); font-weight:700; z-index:2; pointer-events:none; padding:1px 4px; box-sizing:border-box; }
+.pl-sub { font-size:10px; color:var(--muted); font-weight:700; margin-bottom:4px; }
+body.pl-resizing { -webkit-user-select:none; user-select:none; cursor:ns-resize; }
 .pl-over { color:#dc2626; font-weight:700; font-size:12px; }
 .pl-help { font-size:12px; color:var(--muted); margin:-4px 0 12px; line-height:1.5; }
 .pl-edit { width:100%; min-width:0; font-size:13px; font-family:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:5px; -webkit-user-select:text; user-select:text; }
@@ -377,7 +396,7 @@ tr:hover td { background: #f8fafc; }
 .pl-del:hover { opacity:1; color:#ef4444; }
 .pl-add { width:100%; border:1px dashed var(--border); border-radius:8px; padding:7px 9px; font-size:13px; font-family:inherit; margin-top:8px; background:transparent; color:var(--text); }
 .pl-add:focus { outline:none; border-color:var(--accent); background:#fff; }
-.pl-ghost { position:fixed; z-index:1000; pointer-events:none; opacity:.92; box-shadow:0 8px 24px rgba(0,0,0,.25); background:#fff; transform:rotate(-2deg); }
+.pl-ghost { position:fixed !important; z-index:1000; pointer-events:none; opacity:.92; box-shadow:0 8px 24px rgba(0,0,0,.25); background:#fff; transform:rotate(-2deg); }
 body.pl-dragging { -webkit-user-select:none; user-select:none; cursor:grabbing; }
 body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display:none !important; }
 @media (max-width:768px) {
@@ -556,7 +575,7 @@ body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display
           <button class="btn btn-sm btn-primary" onclick="plAutoGenerate()">🤖 全部を自動で割り振る</button>
         </span>
       </div>
-      <div class="pl-help"><b>🤖 全部を自動で割り振る</b>：未納品で締切のある仕事タスクを、締切の2日前（土日なら金曜）に終わるよう<b>締切優先</b>で組み直します（撮影は締切当日）。間に合わせるために1日が8時間を超えてもよく、<b style="color:#dc2626">8時間を超えた日は赤</b>で表示します。<br><b>＋ 新しいタスクだけ追加</b>：まだ配置していない仕事タスクだけを、<b>今の配置は変えずに</b>空いている所へ足します。<br>作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。配置後はドラッグで自由に調整できます（別の週へは、ドラッグしたまま「前の週／次の週」ボタンの上で止めると切り替わります）。</div>
+      <div class="pl-help"><b>🤖 全部を自動で割り振る</b>：未納品で締切のある仕事タスクを、締切の2日前（土日なら金曜）に終わるよう<b>締切優先</b>で組み直します（撮影は締切当日）。間に合わせるために1日が8時間を超えてもよく、<b style="color:#dc2626">8時間を超えた日は赤</b>で表示します。<br><b>＋ 新しいタスクだけ追加</b>：まだ配置していない仕事タスクだけを、<b>今の配置は変えずに</b>空いている所へ足します。<br>作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。各日の下の時間軸に、タスクがその時間の位置に出ます。ドラッグして離した位置が開始時間になり、下の端を引っ張ると長さを変えられます（上の「時間未定」に戻すこともできます）。手動の予定も、時間軸に置くと時間が付きます。配置後はドラッグで自由に調整できます（別の週へは、ドラッグしたまま「前の週／次の週」ボタンの上で止めると切り替わります）。</div>
       <div class="pl-week" id="pl-week"></div>
       <div id="pl-backlog-wrap"></div>
     </div>
@@ -1265,7 +1284,7 @@ function savePlannerExtras() {
   localStorage.setItem('pm_memos', JSON.stringify(plannerMemos));
   savePlannerExtrasToCloud();
 }
-let plDrag = null, plSuppressClick = false;
+let plDrag = null, plResize = null, plSuppressClick = false;
 
 function plNewId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function savePlanner() {
@@ -1299,6 +1318,39 @@ function plItemHTML(x) {
   </div>`;
 }
 
+const PL_PX = 34;   // 時間軸：1時間あたりの高さ(px)
+
+// 時間が重なる予定を横に並べるための列割り当て
+function plLayout(items) {
+  const sorted = items.slice().sort((p, q) => p.start - q.start || p.end - q.end);
+  const out = []; let cluster = [], laneEnds = [], cEnd = -Infinity;
+  const flush = () => { cluster.forEach(c => c.lanes = laneEnds.length); out.push(...cluster); cluster = []; laneEnds = []; cEnd = -Infinity; };
+  sorted.forEach(it => {
+    if (it.start >= cEnd) flush();
+    let lane = laneEnds.findIndex(e => e <= it.start);
+    if (lane < 0) { lane = laneEnds.length; laneEnds.push(it.end); } else laneEnds[lane] = it.end;
+    cluster.push({it, lane}); cEnd = Math.max(cEnd, it.end);
+  });
+  flush();
+  return out;
+}
+
+// 時間軸に置く項目（絶対配置）
+function plTimedHTML(x, lane, lanes, gs) {
+  const top = (x.start - gs) * PL_PX, h = Math.max((x.end - x.start) * PL_PX, 18), w = 100 / lanes;
+  const p = [fmtHour(x.start) + '–' + fmtHour(Math.min(x.end, 30))];
+  if (x.client) p.push(x.client);
+  if (x.auto && x.fixed) p.push('当日');
+  if (x.auto && x.late) p.push('⚠️遅れ');
+  return `<div class="pl-item tl ${x.auto ? 'auto' : 'manual'}${x.done?' done':''}${x.late?' late':''}" data-id="${esc(x.id)}" style="top:${top}px;height:${h}px;left:calc(${lane * w}% + 1px);width:calc(${w}% - 2px)">
+    <span class="pl-grip" aria-hidden="true">⋮⋮</span>
+    <button class="pl-check" data-act="toggle" aria-label="完了">${x.done?'✓':''}</button>
+    <div class="pl-body"><span class="pl-text" data-act="edit">${esc(x.text)}</span><div class="pl-meta">${esc(p.join('　'))}</div></div>
+    <button class="pl-del" data-act="del" aria-label="削除">✕</button>
+    <span class="tl-resize" aria-hidden="true"></span>
+  </div>`;
+}
+
 function renderPlanner() {
   const today = new Date();
   const mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay()+6)%7) + plannerWeekOffset*7);
@@ -1307,16 +1359,27 @@ function renderPlanner() {
   const todayStr = ymd(today);
   document.getElementById('pl-label').textContent = fmtMD(days[0]) + ' 〜 ' + fmtMD(days[6]);
 
+  // その週の時間軸の範囲（既定 9〜19時。それより早い／遅い予定があれば広げる）
+  const isTimed = x => x.start != null && x.end != null;
+  const weekItems = plannerItems.filter(x => isTimed(x) && days.some(d => ymd(d) === x.day));
+  const gs = Math.max(0, Math.min(WORK_START, ...weekItems.map(x => Math.floor(x.start))));
+  const ge = Math.max(WORK_END + 2, ...weekItems.map(x => Math.ceil(x.end)));
+  const lines = Array.from({length: ge - gs}, (_, k) => { const h = gs + k; return `<div class="pl-hline" style="top:${k * PL_PX}px"><span>${h >= 24 ? '翌' + (h - 24) : h}</span></div>`; }).join('');
+  const workBand = `<div class="pl-work" style="top:${(WORK_START - gs) * PL_PX}px;height:${(WORK_END - WORK_START) * PL_PX}px"></div>`;
+
   document.getElementById('pl-week').innerHTML = days.map((d, i) => {
     const key = ymd(d);
     const its = plannerItems.filter(x => x.day === key);
+    const timed = its.filter(isTimed), untimed = its.filter(x => !isTimed(x));
     const done = its.filter(x => x.done).length;
     const hrs = +its.reduce((sum, x) => sum + (x.auto ? (Number(x.hours) || 0) : 0), 0).toFixed(1);   // 自動配置した仕事の合計時間
     const over = hrs > WORK_END - WORK_START;                                                          // 8時間超
     return `<div class="pl-day${key===todayStr?' today':''}${i===5?' sat':''}${i===6?' sun':''}${over?' over':''}" data-drop="${key}">
       <h4>${fmtMD(d)}（${wd[i]}）<span>${hrs ? `<b class="${over?'pl-over':''}">${hrs}h</b> ` : ''}${its.length ? done+'/'+its.length : ''}</span></h4>
-      <div class="pl-list" data-list="${key}">${its.map(plItemHTML).join('')}</div>
-      <input class="pl-add" data-add="${key}" placeholder="＋ 追加" enterkeyhint="done" onkeydown="plAddKey(event,'${key}')">
+      ${untimed.length ? '<div class="pl-sub">時間未定</div>' : ''}
+      <div class="pl-list" data-list="${key}">${untimed.map(plItemHTML).join('')}</div>
+      <input class="pl-add" data-add="${key}" placeholder="＋ 追加（時間未定）" enterkeyhint="done" onkeydown="plAddKey(event,'${key}')">
+      <div class="pl-grid" data-gs="${gs}" data-ge="${ge}" style="height:${(ge - gs) * PL_PX}px">${workBand}${lines}${plLayout(timed).map(c => plTimedHTML(c.it, c.lane, c.lanes, gs)).join('')}</div>
     </div>`;
   }).join('');
 
@@ -1576,9 +1639,9 @@ function plAutoRun(mode) {
 
   // すでに入っている配置を「埋まっている時間」として引き継ぐ
   const busy = {};
-  const keep = plannerItems.filter(x => x.auto && x.day && x.day >= todayStr);
-  keep.filter(x => x.start != null).forEach(x => (busy[x.day] = busy[x.day] || []).push([x.start, x.end]));
-  keep.filter(x => x.start == null && x.hours).forEach(x => {          // 時間帯の無いもの（別の日へ動かした分）は空きに仮置き
+  const keep = plannerItems.filter(x => x.day && x.day >= todayStr);        // 自動・手動とも、時間のある予定は「埋まっている時間」
+  keep.filter(x => x.start != null && x.end != null).forEach(x => (busy[x.day] = busy[x.day] || []).push([x.start, x.end]));
+  keep.filter(x => x.auto && x.start == null && x.hours).forEach(x => {          // 時間帯の無いもの（別の日へ動かした分）は空きに仮置き
     const iv = busy[x.day] = busy[x.day] || [], seg = plFreeSeg(iv, WORK_START);
     const st = seg ? seg[0] : Math.max(WORK_END, ...iv.map(r => r[1]));
     iv.push([st, st + x.hours]);
@@ -1612,18 +1675,44 @@ function plAutoRun(mode) {
 
 // ── ドラッグ&ドロップ（マウス・ペンは項目全体、指はグリップ「⋮⋮」で。HTML5 DnDはスマホで動かないため自前実装）──
 function plPointerDown(e) {
+  const rz = e.target.closest('.tl-resize');                                  // 下端をつかんで長さを変える
+  if (rz) {
+    const item = rz.closest('.pl-item'), x = plannerItems.find(i => i.id === item.dataset.id);
+    if (!x || x.start == null) return;
+    e.preventDefault();
+    plResize = {id: x.id, el: item, startY: e.clientY, end0: x.end, start: x.start, newEnd: x.end};
+    document.body.classList.add('pl-resizing');
+    return;
+  }
   const item = e.target.closest('.pl-item');
   if (!item || e.target.closest('[data-act="toggle"],[data-act="del"],.pl-edit')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (e.pointerType === 'touch' && !e.target.closest('.pl-grip')) return;   // 指で項目本体を触った時はスクロール優先
-  plDrag = {id: item.dataset.id, el: item, x: e.clientX, y: e.clientY, cur: {x: e.clientX, y: e.clientY}, active: false, zone: null, ghost: null, raf: 0};
+  plDrag = {id: item.dataset.id, el: item, x: e.clientX, y: e.clientY, cur: {x: e.clientX, y: e.clientY}, active: false, zone: null, grid: null, ind: null, ghost: null, raf: 0};
+}
+
+// 長さの変更（30分刻み）
+function plResizeMove(e) {
+  const r = plResize;
+  r.newEnd = Math.max(r.start + 0.5, Math.round((r.end0 + (e.clientY - r.startY) / PL_PX) * 2) / 2);
+  r.el.style.height = Math.max((r.newEnd - r.start) * PL_PX, 18) + 'px';
+}
+function plResizeEnd() {
+  const r = plResize; plResize = null;
+  document.body.classList.remove('pl-resizing');
+  plSuppressClick = true; setTimeout(() => plSuppressClick = false, 60);
+  const x = plannerItems.find(i => i.id === r.id);
+  if (x && r.newEnd !== x.end) { x.end = r.newEnd; x.hours = x.end - x.start; savePlanner(); }
+  renderPlanner();
 }
 
 function plBeginDrag() {
   const d = plDrag, r = d.el.getBoundingClientRect();
+  const x = plannerItems.find(i => i.id === d.id) || {};
+  d.dur = Math.max(0.5, (x.start != null && x.end != null) ? x.end - x.start : (Number(x.hours) > 0 ? Number(x.hours) : 1));   // 時間軸に落としたときの長さ
   const g = d.el.cloneNode(true);
   g.classList.add('pl-ghost');
-  g.style.width = r.width + 'px'; g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
+  g.style.width = r.width + 'px'; g.style.left = r.left + 'px'; g.style.top = r.top + 'px'; g.style.height = r.height + 'px';
   document.body.appendChild(g);
   d.ghost = g; d.offX = d.x - r.left; d.offY = d.y - r.top; d.active = true;
   d.el.classList.add('dragging-src');
@@ -1631,17 +1720,34 @@ function plBeginDrag() {
   plAutoScroll();
 }
 
+// 時間軸に落としたときの開始・終了時間（30分刻み）。ドラッグしている項目の上端の位置で決める
+function plDropTime(grid, d) {
+  const gs = Number(grid.dataset.gs), ge = Number(grid.dataset.ge), r = grid.getBoundingClientRect();
+  let st = Math.round((gs + (d.cur.y - d.offY - r.top) / PL_PX) * 2) / 2;
+  st = Math.max(gs, Math.min(st, ge - 0.5));
+  return {start: st, end: st + d.dur};
+}
+
 function plUpdateZone() {
   const {x, y} = plDrag.cur;
   const el = document.elementFromPoint(x, y);
   const zone = el ? el.closest('[data-drop]') : null;
   const nav = el ? el.closest('[data-weeknav]') : null;
+  const grid = el ? el.closest('.pl-grid') : null;
   if (zone !== plDrag.zone || nav !== plDrag.nav) {
     document.querySelectorAll('.drop-hover').forEach(n => n.classList.remove('drop-hover'));
     if (zone) zone.classList.add('drop-hover');
     if (nav) nav.classList.add('drop-hover');
     plDrag.zone = zone;
     if (nav !== plDrag.nav) { plDrag.nav = nav; clearTimeout(plDrag.navTimer); if (nav) plNavDwell(nav); }
+  }
+  if (grid !== plDrag.grid) { if (plDrag.ind) plDrag.ind.remove(); plDrag.ind = null; plDrag.grid = grid; }
+  if (grid) {                                                             // 落とす時間帯を点線で表示
+    const t = plDropTime(grid, plDrag), gs = Number(grid.dataset.gs);
+    if (!plDrag.ind) { plDrag.ind = document.createElement('div'); plDrag.ind.className = 'pl-ind'; grid.appendChild(plDrag.ind); }
+    plDrag.ind.style.top = (t.start - gs) * PL_PX + 'px';
+    plDrag.ind.style.height = Math.max((t.end - t.start) * PL_PX, 18) + 'px';
+    plDrag.ind.textContent = fmtHour(t.start) + '–' + fmtHour(t.end);
   }
 }
 
@@ -1668,6 +1774,7 @@ function plAutoScroll() {                           // 端に近づいたら自�
 }
 
 function plPointerMove(e) {
+  if (plResize) { plResizeMove(e); return; }
   if (!plDrag) return;
   plDrag.cur = {x: e.clientX, y: e.clientY};
   if (!plDrag.active) {
@@ -1686,13 +1793,14 @@ function plFindBefore(list, dragId, x, y) {
   return t ? t.dataset.id : null;
 }
 
-function plMove(id, key, beforeId) {
+// t: {start, end}（時間軸に落としたとき）。無ければ「時間未定」として日付だけ移す
+function plMove(id, key, beforeId, t) {
   const idx = plannerItems.findIndex(i => i.id === id);
   if (idx < 0) return;
   const [it] = plannerItems.splice(idx, 1);
-  const newDay = key === 'backlog' ? null : key;
-  if (it.auto && it.day !== newDay) { it.start = null; it.end = null; }   // 時間帯は無効に（作業時間hだけ残す）
-  it.day = newDay;
+  it.day = key === 'backlog' ? null : key;
+  if (t) { it.start = t.start; it.end = t.end; it.hours = t.end - t.start; }
+  else if (it.start != null) { it.start = null; it.end = null; if (!it.auto) delete it.hours; }   // 時間を外す（仕事タスクは作業時間hだけ残す）
   const bi = beforeId ? plannerItems.findIndex(i => i.id === beforeId) : -1;
   if (bi >= 0) plannerItems.splice(bi, 0, it); else plannerItems.push(it);
   savePlanner();
@@ -1700,17 +1808,22 @@ function plMove(id, key, beforeId) {
 }
 
 function plPointerEnd(e) {
+  if (plResize) { plResizeEnd(); return; }
   if (!plDrag) return;
   const d = plDrag; plDrag = null;
   cancelAnimationFrame(d.raf); clearTimeout(d.navTimer);
   if (!d.active) return;
-  d.ghost.remove();
+  d.ghost.remove(); if (d.ind) d.ind.remove();
   d.el.classList.remove('dragging-src');
   document.body.classList.remove('pl-dragging');
   document.querySelectorAll('.drop-hover').forEach(n => n.classList.remove('drop-hover'));
   plSuppressClick = true; setTimeout(() => plSuppressClick = false, 60);
   if (e.type === 'pointercancel' || !d.zone) return;                     // 枠の外で離したら元のまま
   d.cur = {x: e.clientX, y: e.clientY};
+  if (d.grid && d.zone.dataset.drop !== 'backlog') {                     // 時間軸に落とした → その時間で
+    plMove(d.id, d.zone.dataset.drop, null, plDropTime(d.grid, d));
+    return;
+  }
   const list = d.zone.querySelector('.pl-list');
   plMove(d.id, d.zone.dataset.drop, plFindBefore(list, d.id, d.cur.x, d.cur.y));
 }
