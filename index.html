@@ -331,7 +331,7 @@ tr:hover td { background: #f8fafc; }
 .pl-nav { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
 .pl-nav .btn.drop-hover { background:#dbeafe; border-color:var(--accent); color:var(--accent); }
 .pl-nav .pl-label { font-weight:700; font-size:15px; margin:0 6px; }
-.pl-week { display:grid; grid-template-columns:repeat(7,minmax(150px,1fr)); gap:10px; margin-bottom:20px; overflow-x:auto; padding-bottom:6px; }
+.pl-week { display:grid; grid-template-columns:repeat(7,minmax(185px,1fr)); gap:10px; margin-bottom:20px; overflow-x:auto; padding-bottom:6px; }
 .pl-day, .pl-backlog { background:var(--white); border:2px solid var(--border); border-radius:12px; padding:10px; display:flex; flex-direction:column; transition:background .12s, border-color .12s; }
 .pl-day { min-height:200px; }
 .pl-day.today { border-color:var(--accent); box-shadow:0 0 0 3px rgba(41,128,185,.12); }
@@ -374,7 +374,8 @@ tr:hover td { background: #f8fafc; }
 .pl-grid { position:relative; margin-top:10px; border-top:1px solid var(--border); background:#fff; -webkit-user-select:none; user-select:none; }
 .pl-work { position:absolute; left:0; right:0; background:#f4f9ff; pointer-events:none; }
 .pl-hline { position:absolute; left:0; right:0; height:0; border-top:1px dashed #e3e9f0; pointer-events:none; }
-.pl-hline span { position:absolute; left:2px; top:1px; font-size:9px; color:#a3afbf; }
+.pl-hline span { position:absolute; left:0; top:1px; width:22px; text-align:right; font-size:10px; color:#8693a5; line-height:1; }
+.pl-lane { position:absolute; left:26px; right:0; top:0; bottom:0; }
 .pl-item.tl { position:absolute; box-sizing:border-box; overflow:hidden; padding:2px 3px 8px 3px; gap:3px; border:1px solid #bcd7f5; border-left:4px solid var(--accent); background:#eaf3fd; border-radius:6px; cursor:grab; z-index:1; }
 .pl-item.tl.manual { background:#e9f9f0; border-color:#bfe8d1; border-left-color:#22c55e; }
 .pl-item.tl.late { background:#fef2f2; border-color:#fecaca; border-left-color:#ef4444; }
@@ -386,7 +387,7 @@ tr:hover td { background: #f8fafc; }
 .pl-item.tl .pl-del { font-size:10px; padding:0; }
 .tl-resize { position:absolute; left:0; right:0; bottom:0; height:8px; cursor:ns-resize; touch-action:none; }
 .tl-resize::after { content:''; position:absolute; left:50%; bottom:2px; width:18px; height:3px; margin-left:-9px; border-radius:2px; background:rgba(0,0,0,.2); }
-.pl-ind { position:absolute; left:0; right:0; background:rgba(41,128,185,.18); border:2px dashed var(--accent); border-radius:6px; font-size:10px; color:var(--accent); font-weight:700; z-index:2; pointer-events:none; padding:1px 4px; box-sizing:border-box; }
+.pl-ind { position:absolute; left:26px; right:0; background:rgba(41,128,185,.18); border:2px dashed var(--accent); border-radius:6px; font-size:10px; color:var(--accent); font-weight:700; z-index:2; pointer-events:none; padding:1px 4px; box-sizing:border-box; }
 .pl-sub { font-size:10px; color:var(--muted); font-weight:700; margin-bottom:4px; }
 body.pl-resizing { -webkit-user-select:none; user-select:none; cursor:ns-resize; }
 .pl-over { color:#dc2626; font-weight:700; font-size:12px; }
@@ -575,7 +576,7 @@ body.view-planner #fab, body.view-planner #topbar .btn-primary.add-btn { display
           <button class="btn btn-sm btn-primary" onclick="plAutoGenerate()">🤖 全部を自動で割り振る</button>
         </span>
       </div>
-      <div class="pl-help"><b>🤖 全部を自動で割り振る</b>：未納品で締切のある仕事タスクを、締切の2日前（土日なら金曜）に終わるよう<b>締切優先</b>で組み直します（撮影は締切当日）。間に合わせるために1日が8時間を超えてもよく、<b style="color:#dc2626">8時間を超えた日は赤</b>で表示します。<br><b>＋ 新しいタスクだけ追加</b>：まだ配置していない仕事タスクだけを、<b>今の配置は変えずに</b>空いている所へ足します。<br>作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。各日の下の時間軸に、タスクがその時間の位置に出ます。ドラッグして離した位置が開始時間になり、下の端を引っ張ると長さを変えられます（上の「時間未定」に戻すこともできます）。手動の予定も、時間軸に置くと時間が付きます。配置後はドラッグで自由に調整できます（別の週へは、ドラッグしたまま「前の週／次の週」ボタンの上で止めると切り替わります）。</div>
+      <div class="pl-help"><b>🤖 全部を自動で割り振る</b>：未納品で締切のある仕事タスクを、締切の2日前（土日なら金曜）に終わるよう<b>締切優先</b>で組み直します（撮影は締切当日）。<b>1件のタスクは分割せず1つのまま</b>置きます。1日が8時間を超えてもよく、<b style="color:#dc2626">8時間を超えた日は赤</b>で表示します。<br><b>＋ 新しいタスクだけ追加</b>：まだ配置していない仕事タスクだけを、<b>今の配置は変えずに</b>空いている所へ足します。<br>作業時間は自動見積り（外注に出したタスクは確認の0.5h）。タスク編集の「作業時間の見込み」を入れるとそちらが優先されます。各日の下の時間軸に、タスクがその時間の位置に出ます。ドラッグして離した位置が開始時間になり、下の端を引っ張ると長さを変えられます（上の「時間未定」に戻すこともできます）。手動の予定も、時間軸に置くと時間が付きます。配置後はドラッグで自由に調整できます（別の週へは、ドラッグしたまま「前の週／次の週」ボタンの上で止めると切り替わります）。</div>
       <div class="pl-week" id="pl-week"></div>
       <div id="pl-backlog-wrap"></div>
     </div>
@@ -1337,12 +1338,14 @@ function plLayout(items) {
 
 // 時間軸に置く項目（絶対配置）
 function plTimedHTML(x, lane, lanes, gs) {
-  const top = (x.start - gs) * PL_PX, h = Math.max((x.end - x.start) * PL_PX, 18), w = 100 / lanes;
+  const top = (x.start - gs) * PL_PX, h = Math.max((x.end - x.start) * PL_PX, 18);
+  const w = lanes > 1 ? Math.max(100 / lanes, 66) : 100;                     // 重なる予定は少しずらして重ねる（細く分割しない）
+  const left = lanes > 1 ? lane * (100 - w) / (lanes - 1) : 0;
   const p = [fmtHour(x.start) + '–' + fmtHour(Math.min(x.end, 30))];
   if (x.client) p.push(x.client);
   if (x.auto && x.fixed) p.push('当日');
   if (x.auto && x.late) p.push('⚠️遅れ');
-  return `<div class="pl-item tl ${x.auto ? 'auto' : 'manual'}${x.done?' done':''}${x.late?' late':''}" data-id="${esc(x.id)}" style="top:${top}px;height:${h}px;left:calc(${lane * w}% + 1px);width:calc(${w}% - 2px)">
+  return `<div class="pl-item tl ${x.auto ? 'auto' : 'manual'}${x.done?' done':''}${x.late?' late':''}" data-id="${esc(x.id)}" style="top:${top}px;height:${h}px;left:calc(${left}% + 1px);width:calc(${w}% - 2px);z-index:${1 + lane}">
     <span class="pl-grip" aria-hidden="true">⋮⋮</span>
     <button class="pl-check" data-act="toggle" aria-label="完了">${x.done?'✓':''}</button>
     <div class="pl-body"><span class="pl-text" data-act="edit">${esc(x.text)}</span><div class="pl-meta">${esc(p.join('　'))}</div></div>
@@ -1379,7 +1382,7 @@ function renderPlanner() {
       ${untimed.length ? '<div class="pl-sub">時間未定</div>' : ''}
       <div class="pl-list" data-list="${key}">${untimed.map(plItemHTML).join('')}</div>
       <input class="pl-add" data-add="${key}" placeholder="＋ 追加（時間未定）" enterkeyhint="done" onkeydown="plAddKey(event,'${key}')">
-      <div class="pl-grid" data-gs="${gs}" data-ge="${ge}" style="height:${(ge - gs) * PL_PX}px">${workBand}${lines}${plLayout(timed).map(c => plTimedHTML(c.it, c.lane, c.lanes, gs)).join('')}</div>
+      <div class="pl-grid" data-gs="${gs}" data-ge="${ge}" style="height:${(ge - gs) * PL_PX}px">${workBand}${lines}<div class="pl-lane">${plLayout(timed).map(c => plTimedHTML(c.it, c.lane, c.lanes, gs)).join('')}</div></div>
     </div>`;
   }).join('');
 
@@ -1551,60 +1554,46 @@ function plPlan(entries, busy, now) {
     made.push(mk(it, key, st, st + it.est, true));
   });
 
-  // ② それ以外は目標日が早い順に。まず通常枠(9〜17時)で詰め、締切に間に合わなければ締切優先で8時間超えも許可
+  // ② それ以外は目標日が早い順に。1件は分割せず丸ごと1つの日に置く（8時間を超えた日は赤で表示される）
   flexible.push(...entries.filter(it => !it.shoot));
   flexible.sort((p, q) => p.target - q.target || parseYMD(p.t.deadline) - parseYMD(q.t.deadline) || p.t.id - q.t.id);
   let day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), cur0 = nowCur;
   if (isWeekend(day0) || cur0 >= WORK_END) { day0 = nextWorkday(day0); cur0 = WORK_START; }
   else if (cur0 < WORK_START) cur0 = WORK_START;
   const startKey = ymd(day0);
+  const FULL = WORK_END - WORK_START, MAX_DAY = 12;      // 8時間未満の日には足してよい（合計12時間まで）
 
   flexible.forEach(it => {
-    const days = [];                                                    // 開始日〜目標日の平日
-    for (let d = new Date(day0); d <= it.target; d = nextWorkday(d)) days.push(new Date(d));
-    let chunks = [], tmp = {}, rest = it.est;
-    const ivs = k => (busy[k] || []).concat(tmp[k] || []);
-    const place = (key, st, en) => { chunks.push(mk(it, key, st, en, false, false)); (tmp[key] = tmp[key] || []).push([st, en]); };
-
-    // (a) 通常枠に、開始日から順に
-    let day = new Date(day0), cur = cur0;
-    for (let guard = 0; rest > 1e-9 && guard < 800; guard++) {
-      const key = ymd(day), seg = plFreeSeg(ivs(key), cur);
-      if (!seg) { day = nextWorkday(day); cur = WORK_START; continue; }
-      const take = Math.min(rest, seg[1] - seg[0]);
-      place(key, seg[0], seg[0] + take); cur = seg[0] + take; rest -= take;
-    }
-    const finish = parseYMD(chunks[chunks.length - 1].day);
-
-    if (finish > it.target && days.length) {
-      // (b) 締切優先：開始日〜目標日の平日に収める。通常枠が足りない分は、いちばん空いている日に上乗せ（8時間超えOK）
-      chunks = []; tmp = {}; rest = it.est;
-      days.forEach(d => {
-        const key = ymd(d); let c = key === startKey ? cur0 : WORK_START, seg;
-        while (rest > 1e-9 && (seg = plFreeSeg(ivs(key), c))) {
-          const take = Math.min(rest, seg[1] - seg[0]);
-          place(key, seg[0], seg[0] + take); c = seg[0] + take; rest -= take;
-        }
-      });
-      if (rest > 1e-9) {
-        const extra = {};
-        const load = k => ivs(k).reduce((sum, r) => sum + (r[1] - r[0]), 0) + (extra[k] || 0);
-        while (rest > 1e-9) {
-          const step = Math.min(0.5, rest);
-          let best = ymd(days[0]), bl = Infinity;
-          days.forEach(d => { const l = load(ymd(d)); if (l < bl) { bl = l; best = ymd(d); } });
-          extra[best] = (extra[best] || 0) + step; rest -= step;
-        }
-        Object.entries(extra).forEach(([key, h]) => {
-          const st = Math.max(WORK_END, ...ivs(key).map(r => r[1]));    // 17時以降に続けて置く
-          place(key, st, st + h);
-        });
+    const h = it.est;
+    const load = k => (busy[k] || []).reduce((sum, r) => sum + (r[1] - r[0]), 0);
+    const hasRoom = k => {
+      if (k === startKey && cur0 > WORK_START) {          // 今日の途中からは、半日分（短いタスクはその長さ）の空きがあるときだけ
+        const used = (busy[k] || []).reduce((sum, r) => sum + Math.max(0, r[1] - Math.max(r[0], cur0)), 0);
+        return WORK_END - cur0 - used >= Math.min(h, FULL / 2);
       }
-    } else if (finish > it.target) {                                    // 目標日がもう過ぎている → 間に合わない
-      chunks.forEach(c => c.late = true); lateNames.push(it.t.name);
+      return load(k) < FULL && (load(k) === 0 || load(k) + h <= MAX_DAY);
+    };
+    const days = [];                                      // 開始日〜目標日の平日
+    for (let d = new Date(day0); d <= it.target; d = nextWorkday(d)) days.push(new Date(d));
+
+    let day = days.find(d => hasRoom(ymd(d))), late = false;
+    const busyness = d => load(ymd(d)) + (ymd(d) === startKey ? cur0 - WORK_START : 0);   // 今日は過ぎた時間も埋まっている扱い
+    if (!day && days.length) day = days.reduce((best, d) => busyness(d) < busyness(best) ? d : best, days[0]);   // 目標日まで満杯 → 一番空いている日に重ねる
+    if (!day) {                                           // 目標日がもう過ぎている → いちばん早い空き日に置いて「遅れ」
+      late = true; day = new Date(day0);
+      for (let guard = 0; !hasRoom(ymd(day)) && guard < 400; guard++) day = nextWorkday(day);
     }
-    Object.entries(tmp).forEach(([k, a]) => get(k).push(...a));
-    made.push(...chunks);
+
+    const key = ymd(day);
+    let st = key === startKey ? cur0 : WORK_START;        // 他の予定と重ならない、連続した時間
+    for (const [bs, be] of (busy[key] || []).slice().sort((p, q) => p[0] - q[0])) {
+      if (bs >= st + h) break;
+      if (be > st) st = be;
+    }
+    if (st + h > 24) st = Math.max(key === startKey ? cur0 : WORK_START, 24 - h);   // 24時を超えるほど詰まる日は、重ねて表示
+    get(key).push([st, st + h]);
+    made.push(mk(it, key, st, st + h, false, late));
+    if (late) lateNames.push(it.t.name);
   });
   made.sort((p, q) => p.day < q.day ? -1 : p.day > q.day ? 1 : p.start - q.start);
   return {made, lateNames};
@@ -1623,7 +1612,9 @@ function plAutoRun(mode) {
 
   if (mode === 'all') {
     if (!withDl.length) { alert('締切が設定された未納品タスクがありません。'); return; }
-    targets = withDl;
+    const mine = id => plannerItems.filter(x => x.auto && x.taskId === id);
+    targets = withDl.filter(t => !(mine(t.id).length && mine(t.id).every(x => x.done)));   // プランナーでチェック済みの分は除く
+    if (!targets.length) { alert('配置するタスクはありません。締切のある未納品タスクは、すべてプランナーでチェック済みです。'); return; }
     const oldN = plannerItems.filter(isOldAuto).length;
     if (!confirm(`未納品で締切のある仕事タスク ${targets.length} 件を、締切の${BUFFER_DAYS}日前に終わるよう締切優先で自動配置します（1日8時間を超える日が出ることがあります）。` +
         (oldN ? `\n前回の自動配置（未完了の${oldN}件）は置き換えます。手動で追加した項目は変わりません。` : '') + '\nよろしいですか？')) return;
